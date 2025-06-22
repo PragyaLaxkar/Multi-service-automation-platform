@@ -12,8 +12,9 @@ logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 print("Content-Type: text/plain\n")
 form = cgi.FieldStorage()
 
-# Configure the API key
-genai.configure(api_key="")
+# Configure the API key from environment variable
+api_key = os.environ.get('GEMINI_API_KEY')
+genai.configure(api_key=api_key)
 
 # Define the generation configuration
 generation_config = {
