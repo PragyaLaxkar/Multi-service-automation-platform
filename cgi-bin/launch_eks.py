@@ -4,6 +4,7 @@ import cgitb
 import boto3
 import json
 import sys
+import os
 cgitb.enable()
 print("Content-Type: application/json\n")
 sys.stderr = sys.stdout
@@ -15,10 +16,14 @@ region_name = form.getvalue('regionName', 'us-east-1')
 # Helper to get EKS client
 
 def get_eks_client(region):
+    # Get AWS credentials from environment variables
+    aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    
     return boto3.client(
         'eks',
-        aws_access_key_id='',
-        aws_secret_access_key='',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
         region_name=region
     )
 
@@ -140,10 +145,14 @@ def scale_nodegroup():
         return json.dumps({'error': str(e)})
 
 def list_vpcs():
+    # Get AWS credentials from environment variables
+    aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    
     ec2 = boto3.client(
         'ec2',
-        aws_access_key_id='AKIA4MI2J4VQ3FZRJZJX',
-        aws_secret_access_key='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',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
         region_name=region_name
     )
     try:
@@ -154,10 +163,14 @@ def list_vpcs():
         return json.dumps({'error': str(e)})
 
 def list_subnets():
+    # Get AWS credentials from environment variables
+    aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    
     ec2 = boto3.client(
         'ec2',
-        aws_access_key_id='AKIA4MI2J4VQ3FZRJZJX',
-        aws_secret_access_key='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',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
         region_name=region_name
     )
     vpc_id = form.getvalue('vpcId')
