@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Page</title>
+    <style>
+        /* General styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #ffffff;
+            height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .wrapper {
+            height: 100%;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            height: 100%;
+            padding: 20px;
+        }
+
+        .container h1 {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 2.5rem;
+            color: #f5f5f5;
+        }
+
+        .navbar {
+            width: 100%;
+            background-color: #16213e;
+            padding: 10px 0;
+            box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .navbar a {
+            color: #f5f5f5;
+            text-decoration: none;
+            padding: 10px 20px;
+            display: inline-block;
+            font-size: 1.2rem;
+            transition: color 0.3s;
+        }
+
+        .navbar a:hover {
+            color: #4ecca3;
+        }
+
+        .gallery {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-evenly;
+        }
+
+        .card {
+            width: 32%;
+            height: 100%;
+            position: relative;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card img {
+            height: 100%;
+            width: 100%;
+            filter: grayscale(0%);
+            object-fit: cover;
+            transition: filter 0.3s, transform 0.3s;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(78, 204, 163, 0.5);
+        }
+
+        .card:hover img {
+            filter: grayscale(100%) blur(2px);
+        }
+
+        .card figcaption {
+            position: absolute;
+            bottom: 60px;
+            left: 60px;
+            padding: 10px;
+            font-size: 1.55rem;
+            font-weight: 800;
+            color: #000;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .card:hover figcaption {
+            opacity: 1;
+            transform: translateY(-10px);
+        }
+
+    </style>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <div class="navbar">
+        <a href="/menu/index.html">Home</a>
+    </div>
+
+    <!-- Header -->
+    <div class="wrapper">
+        <div class="container">
+            <h1>Welcome to Linux Services</h1>
+            <div class="gallery">
+                <figure class="card">
+                    <img src="/images/linux_terminal.webp" onclick="window.location.href='linux.html'" alt="Linux terminal">
+                    <figcaption style="color: #ffffff;">Linux terminal</figcaption>
+                </figure>
+                <figure class="card">
+                    <img src="/images/linux_web.avif" onclick="window.location.href='wetty.html'" alt="Linux Web">
+                    <figcaption style="color: #ffffff;">Linux Web terminal</figcaption>
+                </figure>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

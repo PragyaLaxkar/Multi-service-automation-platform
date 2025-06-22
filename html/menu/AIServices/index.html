@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI & Chat Support</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            background-color: #4a6fa5;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .tab-button {
+            padding: 12px 24px;
+            background-color: #e0e0e0;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #333;
+            display: inline-block;
+        }
+        .tab-button.active, .tab-button:hover {
+            background-color: #4a6fa5;
+            color: white;
+        }
+        @media (max-width: 768px) {
+            .tabs {
+                flex-direction: column;
+                max-width: 100%;
+            }
+            .tab-button {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+        .info-card {
+            background: #fff;
+            padding: 34px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI & Chat Support</h1>
+            <p>All-in-one platform for your AI and chat needs</p>
+        </header>
+        <div class="tabs">
+            <a href="chatbot.html" class="tab-button">AI Chatbot</a>
+            <a href="generate_image.html" class="tab-button">AI Image Generator</a>
+        </div>
+        <div class="info-card">
+            <h2>Welcome!</h2>
+            <p>Select a service above to get started. Each tool is designed for a focused, easy-to-use experience.</p>
+        </div>
+    </div>
+</body>
+</html>

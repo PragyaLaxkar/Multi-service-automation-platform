@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .chat-container {
+            width: 70%;
+            min-width: 400px;
+            max-width: 1000px;
+            min-height: 800px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            background: #6200ea;
+            color: white;
+            padding: 15px;
+            border-radius: 10px 10px 0 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        .chat-body {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+        .message-row {
+            display: flex;
+            align-items: flex-end;
+            margin-bottom: 10px;
+        }
+        .message-row.user {
+            flex-direction: row-reverse;
+        }
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 8px;
+            flex-shrink: 0;
+        }
+        .avatar.bot {
+            background: #6B73FF;
+            color: #fff;
+        }
+        .avatar.user {
+            background: #bbb;
+            color: #fff;
+        }
+        .user-message, .bot-message {
+            display: inline-block;
+            padding: 12px 18px;
+            border-radius: 10px;
+            margin: 0;
+            font-size: 16px;
+            max-width: 70%;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-line;
+            text-align: left;
+            box-sizing: border-box;
+        }
+        .user-message {
+            background-color: #6B73FF;
+            color: white;
+        }
+        .bot-message {
+            background-color: #ededed;
+            color: #333;
+        }
+        .typing-indicator {
+            font-style: italic;
+            color: #888;
+            margin: 10px 0 10px 0;
+            text-align: left;
+        }
+        .chat-footer {
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+        .feature-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-start;
+            padding: 15px 15px 15px 15px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            outline: none;
+        }
+        button {
+            padding: 10px 20px;
+            background: #6200ea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #3700b3;
+        }
+        pre, code {
+            max-width: 100%;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">AI Chatbot</div>
+        <div class="chat-body" id="chatBody">
+            <div id="responseContainer" style="display: flex; flex-direction: column;"></div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="userInput" placeholder="Type your message..." autocomplete="off">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+        <div class="feature-buttons">
+            <button id="downloadTxtBtn">Download as TXT</button>
+            <button id="downloadPdfBtn">Download as PDF</button>
+            <button id="clearChatBtn">Clear Chat</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // Handle sending messages
+        function sendMessage() {
+            const userInput = document.getElementById('userInput');
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Display user message
+            appendMessage('user', message);
+            userInput.value = '';
+
+            // Send AJAX request to CGI script
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/cgi-bin/chatbot.py', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+            showTypingIndicator();
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    hideTypingIndicator();
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.status === 'success') {
+                        appendMessage('bot', response.response);
+                    } else {
+                        appendMessage('bot', 'Error: ' + response.response);
+                    }
+                } else if (xhr.readyState === 4) {
+                    hideTypingIndicator();
+                    appendMessage('bot', 'Error: Unable to connect to the server.');
+                }
+            };
+
+            xhr.send('message=' + encodeURIComponent(message));
+        }
+
+        // Store chat history
+        const chatHistory = [];
+
+        // Append message to chat body
+        function appendMessage(sender, text) {
+            const container = document.getElementById('responseContainer');
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'message-row ' + sender;
+            // Avatar SVGs
+            let avatarDiv = document.createElement('div');
+            avatarDiv.className = 'avatar ' + sender;
+            if (sender === 'bot') {
+                avatarDiv.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#6B73FF"/><rect x="7" y="15" width="10" height="2" rx="1" fill="white"/><circle cx="9" cy="11" r="1.5" fill="white"/><circle cx="15" cy="11" r="1.5" fill="white"/></svg>`;
+            } else {
+                avatarDiv.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="4" fill="#bbb"/><rect x="6" y="14" width="12" height="6" rx="3" fill="#bbb"/></svg>`;
+            }
+            const messageDiv = document.createElement('div');
+            messageDiv.className = sender === 'user' ? 'user-message' : 'bot-message';
+            if (sender === 'bot') {
+                // Markdown rendering
+                let html = marked.parse(text);
+                // Image/attachment support: if markdown contains image or direct image URL, render as image
+                // Also support plain image URLs (not markdown)
+                const urlRegex = /(https?:\/\/(?:[\w-]+\.)+[\w-]+(?:\/[\w\-._~:/?#[\]@!$&'()*+,;=]*)*\.(?:png|jpg|jpeg|gif|bmp|svg))/gi;
+                let imageUrls = text.match(urlRegex);
+                if (imageUrls) {
+                    imageUrls.forEach(url => {
+                        html += `<div><img src="${url}" alt="Image" style="max-width: 300px; border-radius: 8px; margin-top: 8px;"></div>`;
+                    });
+                }
+                messageDiv.innerHTML = html;
+            } else {
+                messageDiv.textContent = text;
+            }
+            if (sender === 'user') {
+                rowDiv.appendChild(messageDiv);
+                rowDiv.appendChild(avatarDiv);
+            } else {
+                rowDiv.appendChild(avatarDiv);
+                rowDiv.appendChild(messageDiv);
+            }
+            container.appendChild(rowDiv);
+            container.scrollTop = container.scrollHeight;
+
+            // Add to chat history
+            chatHistory.push({ sender, text });
+        }
+
+        function showTypingIndicator() {
+            const container = document.getElementById('responseContainer');
+            let typingDiv = document.getElementById('typing-indicator');
+            if (!typingDiv) {
+                typingDiv = document.createElement('div');
+                typingDiv.className = 'typing-indicator';
+                typingDiv.id = 'typing-indicator';
+                typingDiv.textContent = 'Typing...';
+                container.appendChild(typingDiv);
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        function hideTypingIndicator() {
+            const typingDiv = document.getElementById('typing-indicator');
+            if (typingDiv) {
+                typingDiv.remove();
+            }
+        }
+
+        // Download chat as TXT
+        document.getElementById('downloadTxtBtn').addEventListener('click', function() {
+            let content = '';
+            chatHistory.forEach(msg => {
+                content += (msg.sender === 'user' ? 'You: ' : 'Bot: ') + msg.text + '\n';
+            });
+            const blob = new Blob([content], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'chat_history.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        // Download chat as PDF
+        document.getElementById('downloadPdfBtn').addEventListener('click', function() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let y = 10;
+            doc.setFontSize(12);
+            chatHistory.forEach(msg => {
+                let line = (msg.sender === 'user' ? 'You: ' : 'Bot: ') + msg.text;
+                let lines = doc.splitTextToSize(line, 180);
+                doc.text(lines, 10, y);
+                y += lines.length * 7 + 2;
+                if (y > 270) {
+                    doc.addPage();
+                    y = 10;
+                }
+            });
+            doc.save('chat_history.pdf');
+        });
+
+        // Clear chat button functionality
+        document.getElementById('clearChatBtn').addEventListener('click', function() {
+            // Clear chat window
+            document.getElementById('responseContainer').innerHTML = '';
+            // Clear chat history array
+            chatHistory.length = 0;
+        });
+
+        // Send message on Enter key press
+        document.getElementById('userInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

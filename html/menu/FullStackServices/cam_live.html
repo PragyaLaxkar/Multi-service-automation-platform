@@ -1,0 +1,174 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Cam</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #0482c6ab;
+            padding-top: 60px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        video {
+            width: 640px;
+            height: 480px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            background-color: #000;
+        }
+
+        header {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #f8f9fa;
+            width: 100%;
+            height: 60px;
+            box-sizing: border-box;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        .logo {
+            max-width: 100px;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="linuxworld_informatics_pvt_ltd_logo.jpeg" alt="Logo" class="logo">
+    </header>
+    <div class="container">
+        <h1>Live Cam Task</h1>
+        <video id="video" autoplay></video>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const video = document.getElementById('video');
+
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(stream => {
+                        video.srcObject = stream;
+                        video.play();
+                    })
+                    .catch(err => {
+                        console.error("Error accessing camera: ", err);
+                    });
+            } else {
+                alert("Sorry, your browser does not support camera access.");
+            }
+        });
+    </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Capture</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #202124;
+            color: #E8EAED;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #4285F4;
+            margin-bottom: 20px;
+        }
+
+        #captureBtn {
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: #E8EAED;
+            background-color: #4285F4;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #captureBtn:hover {
+            background-color: #357AE8;
+        }
+
+        #imageContainer {
+            margin-top: 20px;
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Camera Capture</h1>
+    <video id="videoElement" autoplay></video>
+    <br>
+    <button id="captureBtn" onclick="captureImage()">Capture Image</button>
+    <div id="imageContainer"></div>
+
+    <script>
+        // Initialize variables for video stream and canvas context
+        let videoElement = document.getElementById('videoElement');
+        let canvasElement = document.createElement('canvas');
+        let canvasContext = canvasElement.getContext('2d');
+
+        // Function to initialize camera stream
+        function initializeCamera() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    videoElement.srcObject = stream;
+                })
+                .catch(function (error) {
+                    console.error('Error accessing camera: ', error);
+                });
+        }
+
+        // Function to capture image
+        function captureImage() {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+
+            canvasContext.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+
+            let imageURL = canvasElement.toDataURL('image/png');
+            displayImage(imageURL);
+        }
+
+        // Function to display captured image
+        function displayImage(imageURL) {
+            let imageContainer = document.getElementById('imageContainer');
+            imageContainer.innerHTML = `<img src="${imageURL}" alt="Captured Image" style="max-width: 100%;">`;
+        }
+
+        // Call initializeCamera() when the page loads
+        initializeCamera();
+    </script>
+</body>
+</html>

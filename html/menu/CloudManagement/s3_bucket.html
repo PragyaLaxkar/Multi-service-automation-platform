@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>S3 Bucket Manager</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', 'Roboto', Arial, sans-serif; }
+        .table thead th { background: #f3f3f3; font-weight: 600; }
+        .table-hover tbody tr:hover { background: #f8f9fa; }
+        .object-actions button { margin-right: 4px; }
+        .drag-area {
+            border: 2px dashed #6c757d;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            color: #6c757d;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .drag-area.dragover { background: #e9ecef; }
+        .modal-lg { max-width: 700px; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">S3 Bucket Manager</h2>
+        <ul class="nav nav-tabs" id="s3Tabs" role="tablist">
+            <li class="nav-item" role="presentation"><button class="nav-link active" id="buckets-tab" data-bs-toggle="tab" data-bs-target="#buckets" type="button" role="tab">Buckets</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" id="objects-tab" data-bs-toggle="tab" data-bs-target="#objects" type="button" role="tab">Objects</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button" role="tab">Upload</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" id="policies-tab" data-bs-toggle="tab" data-bs-target="#policies" type="button" role="tab">Policies</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" id="acl-tab" data-bs-toggle="tab" data-bs-target="#acl" type="button" role="tab">ACL/Meta</button></li>
+        </ul>
+        <div class="tab-content p-4 border border-top-0 bg-white" id="s3TabContent">
+            <!-- Buckets Tab -->
+            <div class="tab-pane fade show active" id="buckets" role="tabpanel">
+                <button id="refreshBuckets" class="btn btn-secondary mb-2">List Buckets</button>
+                <div class="mb-2" id="bucketsList"></div>
+                <table class="table table-bordered table-hover" id="bucketsTable"><thead><tr><th>Name</th><th>Region</th><th>Actions</th></tr></thead><tbody></tbody></table>
+                <input type="text" id="newBucketName" class="form-control mb-2" placeholder="New bucket name">
+                <select id="newBucketRegion" class="form-select mb-2">
+                    <option value="">-- Select AWS Region --</option>
+                    <option value="us-east-1">US East (N. Virginia)</option>
+                    <option value="us-west-1">US West (N. California)</option>
+                    <option value="us-west-2">US West (Oregon)</option>
+                    <option value="ap-south-1">Asia Pacific (Mumbai)</option>
+                    <option value="ap-northeast-1">Asia Pacific (Tokyo)</option>
+                    <option value="eu-west-1">EU (Ireland)</option>
+                </select>
+                <button id="createBucketBtn" class="btn btn-primary mb-2">Create Bucket</button>
+                <!-- <button id="deleteBucketBtn" class="btn btn-danger mb-2">Delete Selected Bucket</button> -->
+                <div id="bucketActionResult"></div>
+            </div>
+            <!-- Objects Tab -->
+            <div class="tab-pane fade" id="objects" role="tabpanel">
+                <div class="mb-2">
+                    <label>Select Bucket:</label>
+                    <select id="objectBucketSelect" class="form-select mb-2"></select>
+                    <input type="text" id="objectPrefix" class="form-control mb-2" placeholder="Prefix (optional)">
+                    <button id="listObjectsBtn" class="btn btn-secondary mb-2">List Objects</button>
+                    <input type="text" id="searchPrefix" class="form-control mb-2" placeholder="Search by prefix/tag">
+                    <button id="searchObjectsBtn" class="btn btn-info mb-2">Search Objects</button>
+                </div>
+                <div id="objectsList"></div>
+                <table class="table table-bordered table-hover" id="objectsTable"><thead><tr><th>Key</th><th>Actions</th></tr></thead><tbody></tbody></table>
+                <div id="objectActionResult"></div>
+            </div>
+            <!-- Upload Tab -->
+            <div class="tab-pane fade" id="upload" role="tabpanel">
+                <label>Select Bucket:</label>
+                <select id="uploadBucketSelect" class="form-select mb-2"></select>
+                <div class="drag-area" id="dragArea">Drag & Drop files here or click to select</div>
+                <input type="file" id="uploadFile" class="form-control mb-2" style="display:none;">
+                <button id="uploadBtn" class="btn btn-primary mb-2">Upload File</button>
+                <div id="uploadResult"></div>
+            </div>
+            <!-- Policies Tab -->
+            <div class="tab-pane fade" id="policies" role="tabpanel">
+                <label>Select Bucket:</label>
+                <select id="policyBucketSelect" class="form-select mb-2"></select>
+                <button id="getPolicyBtn" class="btn btn-secondary mb-2">Get Policy</button>
+                <textarea id="bucketPolicy" class="form-control mb-2" rows="4" placeholder="Paste policy JSON here"></textarea>
+                <button id="setPolicyBtn" class="btn btn-primary mb-2">Set Policy</button>
+                <div id="policyResult"></div>
+            </div>
+            <!-- ACL/Meta Tab -->
+            <div class="tab-pane fade" id="acl" role="tabpanel">
+                <label>Select Bucket:</label>
+                <select id="aclBucketSelect" class="form-select mb-2"></select>
+                <input type="text" id="aclObjectKey" class="form-control mb-2" placeholder="Object key">
+                <select id="objectAcl" class="form-select mb-2">
+                    <option value="">-- Select ACL --</option>
+                    <option value="private">private</option>
+                    <option value="public-read">public-read</option>
+                    <option value="public-read-write">public-read-write</option>
+                    <option value="authenticated-read">authenticated-read</option>
+                </select>
+                <button id="setAclBtn" class="btn btn-primary mb-2">Set ACL</button>
+                <button id="getMetaBtn" class="btn btn-info mb-2">Get Metadata</button>
+                <div id="aclMetaResult"></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="metaModal" tabindex="-1" aria-labelledby="metaModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="metaModalLabel">Object Metadata</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <pre id="metaJson" style="font-size:1rem;"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="confirmModalLabel">Confirm Action</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="confirmMsg">Are you sure?</div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirmYesBtn">Yes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Helper to populate bucket dropdowns
+        function loadBuckets(selectIds) {
+            $.get('/cgi-bin/s3_bucket.py?action=list_buckets', function(data) {
+                const buckets = data.buckets || [];
+                selectIds.forEach(id => {
+                    const sel = $(id);
+                    sel.empty();
+                    sel.append('<option value="">-- Select Bucket --</option>');
+                    buckets.forEach(b => sel.append(`<option value="${b}">${b}</option>`));
+                });
+                // Buckets Table
+                const tbody = $('#bucketsTable tbody');
+                tbody.empty();
+                buckets.forEach(b => {
+                    tbody.append(`<tr><td>${b}</td><td>—</td><td><button class='btn btn-danger btn-sm delete-bucket' data-bucket='${b}'>Delete</button></td></tr>`);
+                });
+            });
+        }
+
+        // Initial load
+        $(function() {
+            loadBuckets(['#objectBucketSelect','#uploadBucketSelect','#policyBucketSelect','#aclBucketSelect']);
+        });
+
+        // Buckets Tab
+        $('#refreshBuckets').click(function() {
+            loadBuckets(['#objectBucketSelect','#uploadBucketSelect','#policyBucketSelect','#aclBucketSelect']);
+            $.get('/cgi-bin/s3_bucket.py?action=list_buckets', function(data) {
+                $('#bucketsList').html('<b>Buckets:</b> ' + (data.buckets || []).join(', '));
+            });
+        });
+        $('#createBucketBtn').click(function() {
+            const name = $('#newBucketName').val();
+            const region = $('#newBucketRegion').val();
+            $.post('/cgi-bin/s3_bucket.py', {action:'create_bucket',bucket_name:name,region:region}, function(data){
+                $('#bucketActionResult').html(data.message ? `<div class='alert alert-success'>${data.message}</div>` : `<div class='alert alert-danger'>${data.error}</div>`);
+                loadBuckets(['#objectBucketSelect','#uploadBucketSelect','#policyBucketSelect','#aclBucketSelect']);
+            });
+        });
+        // $('#deleteBucketBtn').click(function() {
+        //     const bucket = $('#objectBucketSelect').val();
+        //     if (!bucket) return $('#bucketActionResult').html('<div class="alert alert-warning">Select a bucket first.</div>');
+        //     $.post('/cgi-bin/s3_bucket.py', {action:'delete_bucket',bucket_name:bucket}, function(data){
+        //         $('#bucketActionResult').html(data.message ? `<div class='alert alert-success'>${data.message}</div>` : `<div class='alert alert-danger'>${data.error}</div>`);
+        //         loadBuckets(['#objectBucketSelect','#uploadBucketSelect','#policyBucketSelect','#aclBucketSelect']);
+        //     });
+        // });
+
+        // Objects Tab
+        function loadObjectsTable(bucket, prefix) {
+            $.get('/cgi-bin/s3_bucket.py', {action:'list_objects',bucket_name:bucket,prefix:prefix}, function(data){
+                const objs = data.objects || [];
+                const tbody = $('#objectsTable tbody');
+                tbody.empty();
+                objs.forEach(key => {
+                    tbody.append(`<tr><td class='object-key' style='cursor:pointer;'>${key}</td><td class='object-actions'>
+                        <button class='btn btn-success btn-sm download-obj' data-key='${key}'>Download</button>
+                        <button class='btn btn-info btn-sm presign-obj' data-key='${key}'>Pre-signed URL</button>
+                        <button class='btn btn-danger btn-sm delete-obj' data-key='${key}'>Delete</button>
+                        <button class='btn btn-secondary btn-sm copy-obj' data-key='${key}'>Copy</button>
+                        <button class='btn btn-warning btn-sm move-obj' data-key='${key}'>Move</button>
+                        <button class='btn btn-dark btn-sm meta-obj' data-key='${key}'>Metadata</button>
+                    </td></tr>`);
+                });
+            });
+        }
+        $('#listObjectsBtn').click(function() {
+            const bucket = $('#objectBucketSelect').val();
+            const prefix = $('#objectPrefix').val();
+            loadObjectsTable(bucket, prefix);
+        });
+        $('#searchObjectsBtn').click(function() {
+            const bucket = $('#objectBucketSelect').val();
+            const prefix = $('#searchPrefix').val();
+            loadObjectsTable(bucket, prefix);
+        });
+        $('#objectsTable').on('click', '.download-obj', function() {
+            const bucket = $('#objectBucketSelect').val();
+            const key = $(this).data('key');
+            $.get('/cgi-bin/s3_bucket.py', {action:'download',bucket_name:bucket,key:key}, function(data){
+                if (data.url) window.open(data.url, '_blank');
+            });
+        });
+        $('#objectsTable').on('click', '.presign-obj', function() {
+            const bucket = $('#objectBucketSelect').val();
+            const key = $(this).data('key');
+            $.get('/cgi-bin/s3_bucket.py', {action:'generate_presigned_url',bucket_name:bucket,key:key}, function(data){
+                if (data.url) $('#objectActionResult').html(`<div class='alert alert-info'><a href='${data.url}' target='_blank'>${data.url}</a></div>`);
+            });
+        });
+        $('#objectsTable').on('click', '.delete-obj', function() {
+            const bucket = $('#objectBucketSelect').val();
+            const key = $(this).data('key');
+            $('#confirmMsg').text(`Delete object '${key}'?`);
+            $('#confirmModal').modal('show');
+            $('#confirmYesBtn').off('click').on('click', function(){
+                $.post('/cgi-bin/s3_bucket.py', {action:'delete_object',bucket_name:bucket,key:key}, function(data){
+                    $('#objectActionResult').html(data.message ? `<div class='alert alert-success'>${data.message}</div>` : `<div class='alert alert-danger'>${data.error}</div>`);
+                    loadObjectsTable(bucket, '');
+                });
+                $('#confirmModal').modal('hide');
+            });
+        });
+        $('#objectsTable').on('click', '.meta-obj', function() {
+            const bucket = $('#objectBucketSelect').val();
+            const key = $(this).data('key');
+            $.get('/cgi-bin/s3_bucket.py', {action:'get_object_metadata',bucket_name:bucket,key:key}, function(data){
+                if (data.metadata) {
+                    $('#metaJson').text(JSON.stringify(data.metadata, null, 2));
+                    $('#metaModal').modal('show');
+                }
+            });
+        });
+        $('#objectsTable').on('click', '.copy-obj', function() {
+            const bucket = $('#objectBucketSelect').val();
+            const key = $(this).data('key');
+            const destBucket = prompt('Destination bucket:');
+            const destKey = prompt('Destination key:', key);
+            if (!destBucket || !destKey) return;
+            $.post('/cgi-bin/s3_bucket.py', {action:'copy_object',bucket_name:bucket,key:key,dest_bucket:destBucket,dest_key:destKey}, function(data){
+                $('#objectActionResult').html(data.message ? `<div class='alert alert-success'>${data.message}</div>` : `<div class='alert alert-danger'>${data.error}</div>`);
+            });
+        });
+        $('#objectsTable').on('click', '.move-obj', function() {
+            const bucket = $('#objectBucketSelect').val();
+            const key = $(this).data('key');
+            const destBucket = prompt('Destination bucket:');
+            const destKey = prompt('Destination key:', key);
+            if (!destBucket || !destKey) return;
+            $.post('/cgi-bin/s3_bucket.py', {action:'move_object',bucket_name:bucket,key:key,dest_bucket:destBucket,dest_key:destKey}, function(data){
+                $('#objectActionResult').html(data.message ? `<div class='alert alert-success'>${data.message}</div>` : `<div class='alert alert-danger'>${data.error}</div>`);
+                loadObjectsTable(bucket, '');
+            });
+        });
+        $('#objectsTable').on('click', '.object-key', function() {
+            const bucket = $('#objectBucketSelect').val();
+            const key = $(this).text();
+            $.get('/cgi-bin/s3_bucket.py', {action:'get_object_metadata',bucket_name:bucket,key:key}, function(data){
+                if (data.metadata) {
+                    $('#metaJson').text(JSON.stringify(data.metadata, null, 2));
+                    $('#metaModal').modal('show');
+                }
+            });
+        });
+        // Drag & Drop Upload
+        const dragArea = document.getElementById('dragArea');
+        dragArea.addEventListener('click', () => document.getElementById('uploadFile').click());
+        dragArea.addEventListener('dragover', e => { e.preventDefault(); dragArea.classList.add('dragover'); });
+        dragArea.addEventListener('dragleave', e => { e.preventDefault(); dragArea.classList.remove('dragover'); });
+        dragArea.addEventListener('drop', e => {
+            e.preventDefault(); dragArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                document.getElementById('uploadFile').files = files;
+            }
+        });
+        // Bucket delete confirmation
+        $('#bucketsTable').on('click', '.delete-bucket', function() {
+            const bucket = $(this).data('bucket');
+            $('#confirmMsg').text(`Delete bucket '${bucket}'?`);
+            $('#confirmModal').modal('show');
+            $('#confirmYesBtn').off('click').on('click', function(){
+                $.post('/cgi-bin/s3_bucket.py', {action:'delete_bucket',bucket_name:bucket}, function(data){
+                    loadBuckets(['#objectBucketSelect','#uploadBucketSelect','#policyBucketSelect','#aclBucketSelect']);
+                });
+                $('#confirmModal').modal('hide');
+            });
+        });
+
+        // Upload Tab
+        $('#uploadBtn').click(function() {
+            const bucket = $('#uploadBucketSelect').val();
+            const file = $('#uploadFile')[0].files[0];
+            if (!bucket || !file) return $('#uploadResult').html('<div class="alert alert-warning">Select bucket and file.</div>');
+            const formData = new FormData();
+            formData.append('action', 'upload');
+            formData.append('bucket_name', bucket);
+            formData.append('file', file);
+            $.ajax({
+                url: '/cgi-bin/s3_bucket.py',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(data) {
+                    $('#uploadResult').html(data.message ? `<div class='alert alert-success'>${data.message}</div>` : `<div class='alert alert-danger'>${data.error}</div>`);
+                }
+            });
+        });
+
+        // Policies Tab
+        $('#getPolicyBtn').click(function() {
+            const bucket = $('#policyBucketSelect').val();
+            $.get('/cgi-bin/s3_bucket.py', {action:'get_bucket_policy',bucket_name:bucket}, function(data){
+                $('#bucketPolicy').val(data.policy || '');
+                $('#policyResult').html(data.policy ? `<div class='alert alert-success'>Policy loaded.</div>` : `<div class='alert alert-warning'>No policy found.</div>`);
+            });
+        });
+        $('#setPolicyBtn').click(function() {
+            const bucket = $('#policyBucketSelect').val();
+            const policy = $('#bucketPolicy').val();
+            $.post('/cgi-bin/s3_bucket.py', {action:'set_bucket_policy',bucket_name:bucket,policy:policy}, function(data){
+                $('#policyResult').html(data.message ? `<div class='alert alert-success'>${data.message}</div>` : `<div class='alert alert-danger'>${data.error}</div>`);
+            });
+        });
+
+        // ACL/Meta Tab
+        $('#setAclBtn').click(function() {
+            const bucket = $('#aclBucketSelect').val();
+            const key = $('#aclObjectKey').val();
+            const acl = $('#objectAcl').val();
+            $.post('/cgi-bin/s3_bucket.py', {action:'set_object_acl',bucket_name:bucket,key:key,acl:acl}, function(data){
+                $('#aclMetaResult').html(data.message ? `<div class='alert alert-success'>${data.message}</div>` : `<div class='alert alert-danger'>${data.error}</div>`);
+            });
+        });
+        $('#getMetaBtn').click(function() {
+            const bucket = $('#aclBucketSelect').val();
+            const key = $('#aclObjectKey').val();
+            $.get('/cgi-bin/s3_bucket.py', {action:'get_object_metadata',bucket_name:bucket,key:key}, function(data){
+                if (data.metadata) {
+                    $('#aclMetaResult').html(`<pre>${JSON.stringify(data.metadata, null, 2)}</pre>`);
+                } else {
+                    $('#aclMetaResult').html(`<div class='alert alert-danger'>${data.error}</div>`);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

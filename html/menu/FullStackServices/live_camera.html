@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Capture</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #202124;
+            color: #E8EAED;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #4285F4;
+            margin-bottom: 20px;
+        }
+
+        #captureBtn {
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: #E8EAED;
+            background-color: #4285F4;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #captureBtn:hover {
+            background-color: #357AE8;
+        }
+
+        #imageContainer {
+            margin-top: 20px;
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Camera Capture</h1>
+    <video id="videoElement" autoplay></video>
+    <br>
+    <button id="captureBtn" onclick="captureImage()">Capture Image</button>
+    <div id="imageContainer"></div>
+
+    <script>
+        // Initialize variables for video stream and canvas context
+        let videoElement = document.getElementById('videoElement');
+        let canvasElement = document.createElement('canvas');
+        let canvasContext = canvasElement.getContext('2d');
+
+        // Function to initialize camera stream
+        function initializeCamera() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    videoElement.srcObject = stream;
+                })
+                .catch(function (error) {
+                    console.error('Error accessing camera: ', error);
+                });
+        }
+
+        // Function to capture image
+        function captureImage() {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+
+            canvasContext.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+
+            let imageURL = canvasElement.toDataURL('image/png');
+            displayImage(imageURL);
+        }
+
+        // Function to display captured image
+        function displayImage(imageURL) {
+            let imageContainer = document.getElementById('imageContainer');
+            imageContainer.innerHTML = `<img src="${imageURL}" alt="Captured Image" style="max-width: 100%;">`;
+        }
+
+        // Call initializeCamera() when the page loads
+        initializeCamera();
+    </script>
+</body>
+</html>

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AWS Lambda Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/theme/eclipse.min.css">
+    <style>
+        body {
+            background: linear-gradient(to right, #ece9e6, #ffffff);
+            font-family: 'Inter', 'Roboto', Arial, sans-serif;
+        }
+        .container {
+            margin-top: 50px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+        }
+        .tab-pane {
+            padding-top: 1.5rem;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+        .card {
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 class="mb-4">AWS Lambda Manager</h2>
+    <ul class="nav nav-tabs" id="lambdaTabs" role="tablist">
+        <li class="nav-item" role="presentation"><button class="nav-link active" id="create-tab" data-bs-toggle="tab" data-bs-target="#create" type="button" role="tab">Create Lambda</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="functions-tab" data-bs-toggle="tab" data-bs-target="#functions" type="button" role="tab">Manage Functions</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="invoke-tab" data-bs-toggle="tab" data-bs-target="#invoke" type="button" role="tab">Invoke Lambda</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="versions-tab" data-bs-toggle="tab" data-bs-target="#versions" type="button" role="tab">Versions & Aliases</button></li>
+    </ul>
+    <div class="tab-content" id="lambdaTabContent">
+        <!-- Create Lambda Tab -->
+        <div class="tab-pane fade show active" id="create" role="tabpanel">
+            <div class="card"><div class="card-body">
+                <form id="createLambdaForm" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="create">
+                    <div class="mb-3"><label class="form-label">Region</label><span id="create-region-select"></span></div>
+                    <div class="mb-3"><label class="form-label">Function Name</label><input type="text" name="functionName" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Runtime</label><select name="runtime" class="form-select" required><option value="python3.12">python3.12</option><option value="python3.11">python3.11</option><option value="nodejs20.x">nodejs20.x</option><option value="nodejs18.x">nodejs18.x</option><option value="java11">java11</option><option value="go1.x">go1.x</option><option value="ruby2.7">ruby2.7</option></select></div>
+                    <div class="mb-3"><label class="form-label">Handler</label><input type="text" name="handler" class="form-control" placeholder="lambda_function.lambda_handler" required></div>
+                    <div class="mb-3"><label class="form-label">Role ARN</label><input type="text" name="role" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Description</label><input type="text" name="description" class="form-control"></div>
+                    <div class="mb-3"><label class="form-label">Timeout (sec)</label><input type="number" name="timeout" class="form-control" value="3" min="1" max="900"></div>
+                    <div class="mb-3"><label class="form-label">Memory (MB)</label><input type="number" name="memorySize" class="form-control" value="128" min="128" max="10240"></div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-outline-info" id="openCodeModal">Lambda Function Code</button>
+                        <span class="form-text">(You can upload a file or write code here. If both are provided, the written code will be used.)</span>
+                    </div>
+                    <input type="hidden" name="inlineCode" id="inlineCodeInput">
+                    <!-- Add Environment Variables to Create Lambda Form -->
+                    <div class="mb-3">
+                      <label class="form-label">Environment Variables</label>
+                      <div id="envVarsList"></div>
+                      <button type="button" class="btn btn-sm btn-outline-primary" id="addEnvVarBtn">Add Variable</button>
+                    </div>
+                    <input type="hidden" name="envVars" id="envVarsInput">
+                    <button type="submit" class="btn btn-success">Create Lambda</button>
+                </form>
+                <div id="createResult" class="mt-3"></div>
+            </div></div>
+        </div>
+        <!-- Manage Functions Tab -->
+        <div class="tab-pane fade" id="functions" role="tabpanel">
+            <div class="card"><div class="card-body">
+                <div class="mb-3"><label class="form-label">Region</label><span id="functions-region-select"></span></div>
+                <button class="btn btn-primary mb-3" id="refreshFunctions">Refresh List</button>
+                <div class="table-responsive"><table class="table table-bordered" id="functionsTable"><thead><tr><th>Name</th><th>Runtime</th><th>Handler</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+                <div id="functionsResult" class="mt-3"></div>
+            </div></div>
+            <!-- Modal for Function Details -->
+            <div class="modal fade" id="detailsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Function Details</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><pre id="detailsJson"></pre></div></div></div></div>
+            <!-- Edit Lambda Config Modal -->
+            <div class="modal fade" id="editConfigModal" tabindex="-1">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Edit Lambda Configuration</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <div class="modal-body">
+                    <form id="editConfigForm">
+                      <input type="hidden" name="functionName" id="editConfigFunctionName">
+                      <input type="hidden" name="region" id="editConfigRegion">
+                      <div class="mb-3"><label class="form-label">Description</label><input type="text" name="description" id="editConfigDescription" class="form-control"></div>
+                      <div class="mb-3"><label class="form-label">Timeout (sec)</label><input type="number" name="timeout" id="editConfigTimeout" class="form-control" min="1" max="900"></div>
+                      <div class="mb-3"><label class="form-label">Memory (MB)</label><input type="number" name="memorySize" id="editConfigMemory" class="form-control" min="128" max="10240"></div>
+                      <div class="mb-3"><label class="form-label">Environment Variables (JSON)</label><textarea name="envVars" id="editConfigEnvVars" class="form-control" rows="3" placeholder='{"KEY":"VALUE"}'></textarea></div>
+                      <button type="submit" class="btn btn-primary">Update Config</button>
+                    </form>
+                    <div id="editConfigResult" class="mt-2"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </div>
+        <!-- Invoke Lambda Tab -->
+        <div class="tab-pane fade" id="invoke" role="tabpanel">
+            <div class="card"><div class="card-body">
+                <form id="invokeLambdaForm">
+                    <input type="hidden" name="action" value="invoke">
+                    <div class="mb-3"><label class="form-label">Region</label><span id="invoke-region-select"></span></div>
+                    <div class="mb-3"><label class="form-label">Function Name</label><select name="functionName" id="invokeFunctionSelect" class="form-select" required></select></div>
+                    <!-- Test Event Templates UI (Invoke Lambda Tab) -->
+                    <div class="mb-2">
+                      <label class="form-label">Test Event Templates</label>
+                      <select id="testEventSelect" class="form-select form-select-sm mb-1" style="max-width:300px;display:inline-block;"></select>
+                      <button type="button" class="btn btn-sm btn-outline-primary" id="saveTestEventBtn">Save As Template</button>
+                      <button type="button" class="btn btn-sm btn-outline-danger" id="deleteTestEventBtn">Delete Template</button>
+                    </div>
+                    <div class="mb-3"><label class="form-label">Payload (JSON)</label><textarea name="payload" id="invokeEvent" class="form-control" rows="4" required>{}</textarea></div>
+                    <button type="submit" class="btn btn-warning">Invoke</button>
+                </form>
+                <div id="invokeResult" class="mt-3"></div>
+            </div></div>
+        </div>
+        <!-- Version & Alias Management Tab -->
+        <div class="tab-pane fade" id="versions" role="tabpanel">
+            <div class="mt-3">
+                <label for="versionFunctionSelect">Lambda Function:</label>
+                <select id="versionFunctionSelect" class="form-select mb-2"></select>
+                <button class="btn btn-primary btn-sm" id="publishVersionBtn">Publish New Version</button>
+                <h6 class="mt-3">Versions</h6>
+                <ul id="versionsList" class="list-group mb-3"></ul>
+                <h6>Aliases</h6>
+                <ul id="aliasesList" class="list-group mb-3"></ul>
+                <div class="card card-body mb-2">
+                    <h6>Create/Update Alias</h6>
+                    <form id="aliasForm" class="row g-2">
+                        <div class="col-md-3"><input type="text" class="form-control" name="aliasName" placeholder="Alias Name" required></div>
+                        <div class="col-md-3"><input type="text" class="form-control" name="version" placeholder="Version (e.g. 1)" required></div>
+                        <div class="col-md-4"><input type="text" class="form-control" name="description" placeholder="Description"></div>
+                        <div class="col-md-2"><button type="submit" class="btn btn-success">Save Alias</button></div>
+                    </form>
+                    <div id="aliasResult" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lambda Function Code Modal for Create Lambda (CodeMirror) -->
+<div class="modal fade" id="createCodeModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Lambda Function Code</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">Write your Lambda handler code here:</label>
+        <div id="createCodeMirror" style="border:1px solid #ccc; min-height:240px;"></div>
+        <div class="form-text">For Python: <code>def lambda_handler(event, context): ...</code><br>For Node.js: <code>exports.handler = async (event, context) =&gt; ...</code></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="useCreateCodeBtn">Use This Code</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Update Lambda Code Modal -->
+<div class="modal fade" id="updateCodeModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Update Lambda Function Code</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">Edit Lambda handler code:</label>
+        <textarea id="updateLambdaCodeEditor" style="display:none;"></textarea>
+        <div id="updateCodeMirror" style="border:1px solid #ccc;"></div>
+        <div class="form-text">For Python: <code>def lambda_handler(event, context): ...</code><br>For Node.js: <code>exports.handler = async (event, context) =&gt; ...</code></div>
+        <div class="mb-2 mt-2"><label class="form-label">Or upload new code file (.js, .py, .java, .go, .rb):</label><input type="file" id="updateCodeFileInput" class="form-control" accept=".js,.py,.java,.go,.rb"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="submitUpdateCodeBtn">Update Code</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- View Logs Modal -->
+<div class="modal fade" id="logsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Lambda Logs</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="logsContent" style="max-height:400px;overflow:auto;"></pre>
+        <a id="downloadLogsBtn" href="#" class="btn btn-sm btn-outline-primary mt-2" download>Download Logs</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/javascript/javascript.min.js"></script>
+<script>
+const regions = [
+    { value: 'us-east-1', label: 'US East (N. Virginia)' },
+    { value: 'ap-south-1', label: 'Asia Pacific (Mumbai)' },
+    { value: 'eu-west-1', label: 'EU (Ireland)' },
+    { value: 'us-west-2', label: 'US West (Oregon)' },
+    { value: 'ap-northeast-1', label: 'Asia Pacific (Tokyo)' }
+];
+function makeRegionSelect(name, id, def) {
+    return `<select name='${name}' id='${id}' class='form-select mb-2'>` +
+        regions.map(r => `<option value='${r.value}'${def===r.value?' selected':''}>${r.label}</option>`).join('') +
+        `</select>`;
+}
+function setRegionSelectors() {
+    document.getElementById('create-region-select').innerHTML = makeRegionSelect('region', 'createRegion', 'ap-south-1');
+    document.getElementById('functions-region-select').innerHTML = makeRegionSelect('region', 'functionsRegion', 'ap-south-1');
+    document.getElementById('invoke-region-select').innerHTML = makeRegionSelect('region', 'invokeRegion', 'ap-south-1');
+}
+setRegionSelectors();
+
+// CodeMirror for Create Lambda
+let createCodeMirror = null;
+function setCreateCodeMirror(lang, code) {
+  const cmContainer = document.getElementById('createCodeMirror');
+  cmContainer.innerHTML = '';
+  createCodeMirror = CodeMirror(cmContainer, {
+    value: code || '',
+    mode: lang,
+    theme: 'eclipse',
+    lineNumbers: true,
+    indentUnit: 4,
+    autofocus: true
+  });
+}
+// Open modal with correct language
+const openCodeModalBtn = document.getElementById('openCodeModal');
+openCodeModalBtn.onclick = function() {
+  let runtime = document.querySelector('select[name="runtime"]').value;
+  let lang = 'python';
+  if (runtime.startsWith('nodejs')) lang = 'javascript';
+  else if (runtime.startsWith('java')) lang = 'text/x-java';
+  else if (runtime.startsWith('go')) lang = 'go';
+  else if (runtime.startsWith('ruby')) lang = 'ruby';
+  const modal = new bootstrap.Modal(document.getElementById('createCodeModal'));
+  modal.show();
+  setTimeout(() => {
+    setCreateCodeMirror(lang, document.getElementById('inlineCodeInput').value || '');
+  }, 300);
+};
+document.getElementById('useCreateCodeBtn').onclick = function() {
+  document.getElementById('inlineCodeInput').value = createCodeMirror ? createCodeMirror.getValue() : '';
+  bootstrap.Modal.getInstance(document.getElementById('createCodeModal')).hide();
+};
+// If runtime changes, update editor mode if modal is open
+const runtimeSelect = document.querySelector('select[name="runtime"]');
+runtimeSelect.addEventListener('change', () => {
+  if (createCodeMirror) {
+    let runtime = runtimeSelect.value;
+    let lang = 'python';
+    if (runtime.startsWith('nodejs')) lang = 'javascript';
+    else if (runtime.startsWith('java')) lang = 'text/x-java';
+    else if (runtime.startsWith('go')) lang = 'go';
+    else if (runtime.startsWith('ruby')) lang = 'ruby';
+    createCodeMirror.setOption('mode', lang);
+  }
+});
+
+// Create Lambda
+const createForm = document.getElementById('createLambdaForm');
+// Environment Variables UI for Create Lambda
+function renderEnvVarsList(vars) {
+  const list = document.getElementById('envVarsList');
+  list.innerHTML = '';
+  vars.forEach((pair, idx) => {
+    const row = document.createElement('div');
+    row.className = 'input-group mb-1';
+    row.innerHTML = `<input type='text' class='form-control env-key' placeholder='Key' value='${pair.key}'>
+      <input type='text' class='form-control env-val' placeholder='Value' value='${pair.value}'>
+      <button type='button' class='btn btn-danger btn-sm remove-env'>&times;</button>`;
+    row.querySelector('.remove-env').onclick = () => {
+      envVars.splice(idx, 1);
+      renderEnvVarsList(envVars);
+    };
+    list.appendChild(row);
+  });
+}
+let envVars = [];
+document.getElementById('addEnvVarBtn').onclick = function() {
+  envVars.push({key:'', value:''});
+  renderEnvVarsList(envVars);
+};
+createForm.onsubmit = function(e) {
+    e.preventDefault();
+    // Collect env vars
+    envVars = Array.from(document.querySelectorAll('#envVarsList .input-group')).map(row => {
+      const key = row.querySelector('.env-key').value.trim();
+      const value = row.querySelector('.env-val').value;
+      return key ? {key, value} : null;
+    }).filter(Boolean);
+    document.getElementById('envVarsInput').value = envVars.length ? JSON.stringify(Object.fromEntries(envVars.map(x => [x.key, x.value]))) : '';
+    const formData = new FormData(createForm);
+    if (formData.get('inlineCode')) formData.delete('codeFile');
+    fetch('/cgi-bin/lambda.py', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => { document.getElementById('createResult').innerHTML = data.message ? `<div class='alert alert-success'>${data.message}</div>` : `<div class='alert alert-danger'>${data.error}</div>`; refreshFunctions(); })
+        .catch(err => { document.getElementById('createResult').innerHTML = `<div class='alert alert-danger'>${err}</div>`; });
+};
+
+// List Functions
+function refreshFunctions() {
+    const region = document.getElementById('functionsRegion').value;
+    fetch('/cgi-bin/lambda.py?action=list&region='+encodeURIComponent(region))
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.querySelector('#functionsTable tbody');
+            tbody.innerHTML = '';
+            (data.functions || []).forEach(fn => {
+                const enabled = fn.State !== 'Inactive';
+                tbody.innerHTML += `<tr><td>${fn.FunctionName}</td><td>${fn.Runtime}</td><td>${fn.Handler}</td><td>
+                  <button class='btn btn-info btn-sm view-fn' data-name='${fn.FunctionName}'>View</button>
+                  <button class='btn btn-danger btn-sm delete-fn' data-name='${fn.FunctionName}'>Delete</button>
+                  <button class='btn btn-warning btn-sm update-code-fn' data-name='${fn.FunctionName}' data-runtime='${fn.Runtime}'>Update Code</button>
+                  <button class='btn btn-secondary btn-sm edit-config-fn' data-name='${fn.FunctionName}'>Edit Config</button>
+                  <button class='btn btn-dark btn-sm view-logs-fn' data-name='${fn.FunctionName}'>View Logs</button>
+                  <div class='form-check form-switch d-inline ms-2'><input class='form-check-input lambda-enable-toggle' type='checkbox' data-name='${fn.FunctionName}' ${enabled ? 'checked' : ''} title='Enable/Disable'></div>
+                </td></tr>`;
+            });
+            // Populate invoke select
+            const invokeSel = document.getElementById('invokeFunctionSelect');
+            invokeSel.innerHTML = (data.functions || []).map(fn => `<option value="${fn.FunctionName}">${fn.FunctionName}</option>`).join('');
+            // Attach update code and edit config button handlers
+            document.querySelectorAll('.update-code-fn').forEach(btn => {
+                btn.onclick = function() {
+                  openUpdateCodeModal(this.dataset.name, this.dataset.runtime);
+                };
+            });
+            document.querySelectorAll('.edit-config-fn').forEach(btn => {
+                btn.onclick = function() {
+                  openEditConfigModal(this.dataset.name);
+                };
+            });
+            document.querySelectorAll('.view-logs-fn').forEach(btn => {
+                btn.onclick = function() {
+                  openLogsModal(this.dataset.name);
+                };
+            });
+            document.querySelectorAll('.lambda-enable-toggle').forEach(toggle => {
+                toggle.onchange = function() { toggleLambdaState(this.dataset.name, this.checked); };
+            });
+        });
+}
+document.getElementById('refreshFunctions').onclick = refreshFunctions;
+window.onload = refreshFunctions;
+
+// View/Delete Actions
+const functionsTable = document.getElementById('functionsTable');
+functionsTable.onclick = function(e) {
+    const region = document.getElementById('functionsRegion').value;
+    if (e.target.classList.contains('view-fn')) {
+        fetch(`/cgi-bin/lambda.py?action=details&functionName=${e.target.dataset.name}&region=${encodeURIComponent(region)}`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('detailsJson').textContent = JSON.stringify(data.details || data, null, 2);
+                new bootstrap.Modal(document.getElementById('detailsModal')).show();
+            });
+    } else if (e.target.classList.contains('delete-fn')) {
+        if (confirm('Delete this function?')) {
+            fetch(`/cgi-bin/lambda.py?action=delete&functionName=${e.target.dataset.name}&region=${encodeURIComponent(region)}`)
+                .then(res => res.json())
+                .then(data => { alert(data.message || data.error); refreshFunctions(); });
+        }
+    }
+};
+
+// Update Code
+let updateCodeMirror = null;
+function setUpdateCodeMirror(lang, code) {
+  const cmContainer = document.getElementById('updateCodeMirror');
+  // Remove previous editor if exists
+  if (updateCodeMirror && updateCodeMirror.getWrapperElement) {
+    cmContainer.innerHTML = '';
+    updateCodeMirror = null;
+  }
+  updateCodeMirror = CodeMirror(cmContainer, {
+    value: code || '',
+    mode: lang,
+    theme: 'eclipse',
+    lineNumbers: true,
+    indentUnit: 4,
+    autofocus: true
+  });
+}
+
+let updateTargetFunction = '';
+let updateTargetRuntime = '';
+function openUpdateCodeModal(functionName, runtime) {
+  updateTargetFunction = functionName;
+  updateTargetRuntime = runtime;
+  document.getElementById('updateCodeFileInput').value = '';
+  // Show modal immediately with loading message
+  setUpdateCodeMirror('python', 'Loading code...');
+  new bootstrap.Modal(document.getElementById('updateCodeModal')).show();
+  // Fetch current code from backend
+  fetch(`/cgi-bin/lambda.py?action=get_code&functionName=${encodeURIComponent(functionName)}`)
+    .then(r => r.json())
+    .then(data => {
+      let lang = 'python';
+      if (runtime.startsWith('nodejs')) lang = 'javascript';
+      else if (runtime.startsWith('java')) lang = 'text/x-java';
+      else if (runtime.startsWith('go')) lang = 'go';
+      else if (runtime.startsWith('ruby')) lang = 'ruby';
+      if (data.code) {
+        setUpdateCodeMirror(lang, data.code);
+      } else {
+        setUpdateCodeMirror(lang, '// Could not load code: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => {
+      setUpdateCodeMirror('python', '// Error fetching code: ' + err);
+      console.error('Error fetching Lambda code:', err);
+    });
+}
+
+const updateCodeBtn = document.getElementById('submitUpdateCodeBtn');
+updateCodeBtn.onclick = function() {
+  const region = document.getElementById('functionsRegion').value;
+  const code = updateCodeMirror ? updateCodeMirror.getValue() : '';
+  const fileInput = document.getElementById('updateCodeFileInput');
+  const formData = new FormData();
+  formData.append('action', 'update_code');
+  formData.append('functionName', updateTargetFunction);
+  formData.append('region', region);
+  if (code) formData.append('inlineCode', code);
+  if (fileInput.files.length > 0) formData.append('codeFile', fileInput.files[0]);
+  fetch('/cgi-bin/lambda.py', { method: 'POST', body: formData })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message || data.error);
+      refreshFunctions();
+    });
+};
+
+// View Logs
+function openLogsModal(functionName) {
+  const region = document.getElementById('functionsRegion').value;
+  document.getElementById('logsContent').textContent = 'Loading...';
+  document.getElementById('downloadLogsBtn').style.display = 'none';
+  fetch(`/cgi-bin/lambda.py?action=get_logs&functionName=${encodeURIComponent(functionName)}&region=${encodeURIComponent(region)}`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('logsContent').textContent = data.logs || data.error || 'No logs found.';
+      if (data.logs) {
+        const blob = new Blob([data.logs], {type:'text/plain'});
+        document.getElementById('downloadLogsBtn').href = URL.createObjectURL(blob);
+        document.getElementById('downloadLogsBtn').download = `${functionName}_logs.txt`;
+        document.getElementById('downloadLogsBtn').style.display = '';
+      }
+    });
+  new bootstrap.Modal(document.getElementById('logsModal')).show();
+}
+
+// Enable/Disable Lambda
+function toggleLambdaState(functionName, checked) {
+  const region = document.getElementById('functionsRegion').value;
+  fetch('/cgi-bin/lambda.py', {
+    method: 'POST',
+    body: new URLSearchParams({action:'set_state', functionName, region, enabled: checked ? '1' : '0'})
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) alert(data.error);
+      refreshFunctions();
+    });
+}
+
+// Edit Config
+function openEditConfigModal(functionName) {
+  const region = document.getElementById('functionsRegion').value;
+  fetch(`/cgi-bin/lambda.py?action=details&functionName=${encodeURIComponent(functionName)}&region=${encodeURIComponent(region)}`)
+    .then(res => res.json())
+    .then(data => {
+      const config = data.details?.Configuration || {};
+      document.getElementById('editConfigFunctionName').value = functionName;
+      document.getElementById('editConfigRegion').value = region;
+      document.getElementById('editConfigDescription').value = config.Description || '';
+      document.getElementById('editConfigTimeout').value = config.Timeout || 3;
+      document.getElementById('editConfigMemory').value = config.MemorySize || 128;
+      document.getElementById('editConfigEnvVars').value = config.Environment && config.Environment.Variables ? JSON.stringify(config.Environment.Variables, null, 2) : '';
+      document.getElementById('editConfigResult').innerHTML = '';
+      new bootstrap.Modal(document.getElementById('editConfigModal')).show();
+    });
+}
+
+const editConfigForm = document.getElementById('editConfigForm');
+editConfigForm.onsubmit = function(e) {
+  e.preventDefault();
+  const formData = new FormData(editConfigForm);
+  formData.append('action', 'update_config');
+  // Parse env vars
+  let envVars = formData.get('envVars');
+  try {
+    envVars = envVars ? JSON.stringify(JSON.parse(envVars)) : '';
+    formData.set('envVars', envVars);
+  } catch (err) {
+    document.getElementById('editConfigResult').innerHTML = `<div class='alert alert-danger'>Environment Variables must be valid JSON.</div>`;
+    return;
+  }
+  fetch('/cgi-bin/lambda.py', { method: 'POST', body: formData })
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('editConfigResult').innerHTML = data.message ? `<div class='alert alert-success'>${data.message}</div>` : `<div class='alert alert-danger'>${data.error}</div>`;
+      refreshFunctions();
+    });
+};
+
+// Invoke Lambda
+const invokeForm = document.getElementById('invokeLambdaForm');
+invokeForm.onsubmit = function(e) {
+    e.preventDefault();
+    const formData = new FormData(invokeForm);
+    formData.set('region', document.getElementById('invokeRegion').value);
+    fetch('/cgi-bin/lambda.py', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('invokeResult').innerHTML = data.result ? `<div class='alert alert-success'><pre>${JSON.stringify(data.result, null, 2)}</pre></div>` : `<div class='alert alert-danger'>${data.error}</div>`;
+        });
+};
+
+// --- Test Event Templates ---
+const TEST_EVENT_KEY = 'lambdaTestEvents';
+function getTestEvents() {
+  return JSON.parse(localStorage.getItem(TEST_EVENT_KEY) || '{}');
+}
+function setTestEvents(obj) {
+  localStorage.setItem(TEST_EVENT_KEY, JSON.stringify(obj));
+}
+function refreshTestEventSelect() {
+  const sel = document.getElementById('testEventSelect');
+  const events = getTestEvents();
+  sel.innerHTML = Object.keys(events).map(name => `<option value="${name}">${name}</option>`).join('');
+  sel.style.display = Object.keys(events).length ? '' : 'none';
+  document.getElementById('deleteTestEventBtn').style.display = Object.keys(events).length ? '' : 'none';
+}
+// Load selected template into event textarea
+function loadTestEvent() {
+  const events = getTestEvents();
+  const sel = document.getElementById('testEventSelect');
+  if (sel.value && events[sel.value]) {
+    document.getElementById('invokeEvent').value = events[sel.value];
+  }
+}
+document.getElementById('testEventSelect').onchange = loadTestEvent;
+// Save current event as template
+function saveTestEvent() {
+  const name = prompt('Template name?');
+  if (!name) return;
+  const events = getTestEvents();
+  events[name] = document.getElementById('invokeEvent').value;
+  setTestEvents(events);
+  refreshTestEventSelect();
+}
+document.getElementById('saveTestEventBtn').onclick = saveTestEvent;
+// Delete selected template
+function deleteTestEvent() {
+  const sel = document.getElementById('testEventSelect');
+  if (!sel.value) return;
+  if (!confirm('Delete template "' + sel.value + '"?')) return;
+  const events = getTestEvents();
+  delete events[sel.value];
+  setTestEvents(events);
+  refreshTestEventSelect();
+}
+document.getElementById('deleteTestEventBtn').onclick = deleteTestEvent;
+// Refresh on load
+refreshTestEventSelect();
+
+// Populate function list for version management
+function refreshVersionFunctions() {
+  fetch('/cgi-bin/lambda.py?action=list&region='+encodeURIComponent(document.getElementById('functionsRegion').value))
+    .then(res => res.json())
+    .then(data => {
+      const sel = document.getElementById('versionFunctionSelect');
+      sel.innerHTML = (data.functions || []).map(fn => `<option value="${fn.FunctionName}">${fn.FunctionName}</option>`).join('');
+      if (sel.value) refreshVersionsAndAliases();
+    });
+}
+
+document.getElementById('versions-tab').addEventListener('shown.bs.tab', function() {
+  refreshVersionFunctions();
+});
+document.getElementById('versionFunctionSelect').onchange = refreshVersionsAndAliases;
+
+function refreshVersionsAndAliases() {
+  const fn = document.getElementById('versionFunctionSelect').value;
+  const region = document.getElementById('functionsRegion').value;
+  // Versions
+  fetch(`/cgi-bin/lambda.py?action=list_versions&functionName=${encodeURIComponent(fn)}&region=${encodeURIComponent(region)}`)
+    .then(res => res.json()).then(data => {
+      const ul = document.getElementById('versionsList');
+      ul.innerHTML = (data.versions||[]).map(v => `<li class='list-group-item'>Version: <b>${v.Version}</b>${v.Description ? ' - '+v.Description : ''}</li>`).join('');
+    });
+  // Aliases
+  fetch(`/cgi-bin/lambda.py?action=list_aliases&functionName=${encodeURIComponent(fn)}&region=${encodeURIComponent(region)}`)
+    .then(res => res.json()).then(data => {
+      const ul = document.getElementById('aliasesList');
+      ul.innerHTML = (data.aliases||[]).map(a => `<li class='list-group-item'>Alias: <b>${a.Name}</b> → Version: <b>${a.FunctionVersion}</b>${a.Description ? ' - '+a.Description : ''}</li>`).join('');
+    });
+}
+
+document.getElementById('publishVersionBtn').onclick = function() {
+  const fn = document.getElementById('versionFunctionSelect').value;
+  const region = document.getElementById('functionsRegion').value;
+  fetch('/cgi-bin/lambda.py', {
+    method: 'POST',
+    body: new URLSearchParams({action:'publish_version', functionName:fn, region})
+  }).then(res => res.json()).then(data => {
+    alert(data.message || data.error);
+    refreshVersionsAndAliases();
+  });
+};
+
+document.getElementById('aliasForm').onsubmit = function(e) {
+  e.preventDefault();
+  const fn = document.getElementById('versionFunctionSelect').value;
+  const region = document.getElementById('functionsRegion').value;
+  const formData = new FormData(this);
+  formData.append('functionName', fn);
+  formData.append('region', region);
+  // Try update first, else create
+  fetch('/cgi-bin/lambda.py', {
+    method: 'POST',
+    body: new URLSearchParams([...formData, ['action', 'update_alias']])
+  }).then(res => res.json()).then(data => {
+    if (data.error && data.error.includes('not found')) {
+      fetch('/cgi-bin/lambda.py', {
+        method: 'POST',
+        body: new URLSearchParams([...formData, ['action', 'create_alias']])
+      }).then(res2 => res2.json()).then(data2 => {
+        document.getElementById('aliasResult').innerHTML = data2.message ? `<div class='alert alert-success'>${data2.message}</div>` : `<div class='alert alert-danger'>${data2.error}</div>`;
+        refreshVersionsAndAliases();
+      });
+    } else {
+      document.getElementById('aliasResult').innerHTML = data.message ? `<div class='alert alert-success'>${data.message}</div>` : `<div class='alert alert-danger'>${data.error}</div>`;
+      refreshVersionsAndAliases();
+    }
+  });
+};
+</script>
+</body>
+</html>

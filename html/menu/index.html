@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi Service Automation Platform</title>
+    <style>
+        /* General styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #1a2a3a;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 1rem;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: #1a2a3a;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            color: #4a5a6a;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features {
+            margin-top: 2rem;
+        }
+
+        .feature {
+            display: flex;
+            align-items: flex-start;
+            padding: 2rem;
+            border-top: 1px solid #eaeaea;
+            transition: background-color 0.3s ease;
+        }
+
+        .feature:hover {
+            background-color: #f9f9f9;
+            cursor: pointer;
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            margin-right: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 2.5rem;
+        }
+
+        .feature-content {
+            flex: 1;
+        }
+
+        .feature-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #1a2a3a;
+        }
+
+        .feature-description {
+            font-size: 1.2rem;
+            color: #4a5a6a;
+        }
+
+        .icon-communication {
+            background-color: #5dabf8;
+        }
+
+        .icon-cloud {
+            background-color: #2a3a5a;
+        }
+
+        .icon-ai {
+            background-color: #7b68ee;
+        }
+
+        .icon-linux {
+            background-color: #43b97f;
+        }
+
+        .icon-docker {
+            background-color: #f7b731;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .subtitle {
+                font-size: 1.2rem;
+            }
+
+            .feature {
+                flex-direction: column;
+                padding: 1.5rem;
+            }
+
+            .feature-icon {
+                margin-right: 0;
+                margin-bottom: 1rem;
+            }
+
+            .feature-title {
+                font-size: 1.5rem;
+            }
+
+            .feature-description {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="container">
+        <header>
+            <h1>Multi Service Automation Platform</h1>
+            <p class="subtitle">Perform powerful digital tasks through a single interface</p>
+        </header>
+        <div class="features">
+            <div class="feature" onclick="Communication_tools()">
+                <div class="feature-icon icon-communication">💬</div>
+                <div class="feature-content">
+                    <h2 class="feature-title">Communication Tools</h2>
+                    <p class="feature-description">Send SMS and email, convert speech to text, search the web, and more</p>
+                </div>
+            </div>
+            <div class="feature" onclick="Cloud_management()">
+                <div class="feature-icon icon-cloud">☁️</div>
+                <div class="feature-content">
+                    <h2 class="feature-title">AWS Cloud Management</h2>
+                    <p class="feature-description">Manage EC2, IAM, S3, EKS, and other AWS resources</p>
+                </div>
+            </div>
+            <div class="feature" onclick="AI_services()">
+                <div class="feature-icon icon-ai">🤖</div>
+                <div class="feature-content">
+                    <h2 class="feature-title">AI & Chat Support</h2>
+                    <p class="feature-description">Chat with an AI assistant, generate images, and much more</p>
+                </div>
+            </div>
+            <div class="feature" onclick="Linux_services()">
+                <div class="feature-icon icon-linux">🐧</div>
+                <div class="feature-content">
+                    <h2 class="feature-title">Try and Practice Linux</h2>
+                    <p class="feature-description">Practice Linux commands, scripts, and server management</p>
+                </div>
+            </div>
+            <div class="feature" onclick="dockerAutomation()">
+                <div class="feature-icon icon-docker">🐳</div>
+                <div class="feature-content">
+                    <h2 class="feature-title">DockEase - Docker Automation</h2>
+                    <p class="feature-description">Automate Docker container management and orchestration</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Functions to handle button clicks
+        function Communication_tools() {
+            window.location.href = "/menu/CommunicationTools/index.html";
+        }
+
+        function Linux_services() {
+            window.location.href = "/menu/LinuxServices/linux.html";
+        }
+
+        function dockerAutomation() {
+            window.location.href = "docker.html";
+        }
+
+        function Cloud_management() {
+            window.location.href = "/menu/CloudManagement/index.html";
+        }
+
+        function AI_services() {
+            window.location.href = "/menu/AIServices/index.html";
+        }
+    </script>
+</body>
+
+</html>

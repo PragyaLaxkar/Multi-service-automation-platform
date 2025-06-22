@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Linux Terminal</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: monospace;
+            margin: 0;
+            padding: 0;
+        }
+
+        #terminal {
+            width: 80%;
+            margin: 50px auto;
+            border: 1.5px solid #222;
+            border-radius: 7px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.7);
+            background: #181818;
+        }
+
+        .terminal-header {
+            background: #222;
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #333;
+        }
+        .window-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        .window-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .window-btn.red { background: #ff5f56; border: 1px solid #e0443e; }
+        .window-btn.yellow { background: #ffbd2e; border: 1px solid #dea123; }
+        .window-btn.green { background: #27c93f; border: 1px solid #13a10e; }
+        .terminal-title {
+            margin-left: 12px;
+            color: #aaa;
+            font-size: 1em;
+            font-family: monospace;
+            letter-spacing: 1px;
+        }
+
+        #input-area {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            background: #181818;
+        }
+        .prompt {
+            color: #7fffd4;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        #input {
+            width: 100%;
+            border: none;
+            background-color: #181818;
+            color: #fff;
+            font-family: monospace;
+            padding: 10px;
+            box-sizing: border-box;
+            outline: none;
+            font-size: 1em;
+        }
+
+        #output {
+            width: 100%;
+            padding: 10px;
+            background-color: #181818;
+            min-height: 500px;
+            font-family: monospace;
+            font-size: 1em;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div id="terminal">
+        <div class="terminal-header">
+            <div class="window-buttons">
+                <span class="window-btn red"></span>
+                <span class="window-btn yellow"></span>
+                <span class="window-btn green"></span>
+            </div>
+            <span class="terminal-title">Linux Terminal</span>
+        </div>
+        <div id="output"></div>
+        <div id="input-area">
+            <span class="prompt">user@linux:/home$</span>
+            <input type="text" id="input" placeholder="Type your command here" autocomplete="off" autofocus>
+        </div>
+    </div>
+
+    <script>
+        let currentDir = '/home'; // Default directory, change as needed
+        const outputDiv = document.getElementById('output');
+        const inputBox = document.getElementById('input');
+        const promptSpan = document.querySelector('.prompt');
+
+        function updatePrompt() {
+            promptSpan.textContent = `user@linux:${currentDir}$`;
+        }
+
+        function handleInput(event) {
+            if (event.key === 'Enter') {
+                const cmd = inputBox.value.trim();
+                if (!cmd) return;
+                // Print the command to the terminal
+                outputDiv.innerHTML += `<div><span style='color:#7fffd4;'>$</span> ${cmd}</div>`;
+                // Handle 'clear' command client-side
+                if (cmd === 'clear') {
+                    outputDiv.innerHTML = '';
+                    inputBox.value = '';
+                    return;
+                }
+                // Send command and cwd to backend
+                fetch(`/cgi-bin/linux.py?cmd=${encodeURIComponent(cmd)}&cwd=${encodeURIComponent(currentDir)}`)
+                    .then(resp => resp.json())
+                    .then(data => {
+                        if (data.output) {
+                            outputDiv.innerHTML += `<pre>${data.output}</pre>`;
+                        }
+                        currentDir = data.cwd || currentDir;
+                        updatePrompt();
+                        outputDiv.scrollTop = outputDiv.scrollHeight;
+                    });
+                inputBox.value = '';
+            }
+        }
+
+        inputBox.addEventListener('keydown', handleInput);
+        updatePrompt();
+    </script>
+</body>
+</html>

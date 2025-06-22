@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Transcribe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        .main-flex {
+            margin: 36px auto;
+            display: flex;
+            flex-direction: row;
+            gap: 36px;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 1100px;
+        }
+        .container {
+            background: white;
+            padding: 36px 32px 32px 32px;
+            border-radius: 18px;
+            box-shadow: 0 6px 32px 0 rgba(0,0,0,0.12);
+            max-width: 520px;
+            width: 100%;
+            margin-top: 32px;
+            margin-bottom: 32px;
+        }
+        .translate-container {
+            background: #f8faff;
+            padding: 32px 28px 28px 28px;
+            border-radius: 18px;
+            box-shadow: 0 6px 32px 0 rgba(0,0,0,0.10);
+            max-width: 420px;
+            width: 100%;
+            margin-top: 32px;
+            margin-bottom: 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .tab-button {
+            padding: 12px 24px;
+            background-color: #e0e0e0;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #333;
+            display: inline-block;
+        }
+        .tab-button.active, .tab-button:hover {
+            background-color: #4a6fa5;
+            color: white;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 0;
+            background: none;
+            color: inherit;
+            border-radius: 0;
+            box-shadow: none;
+        }
+        .header-box {
+            background-color: #4a6fa5;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            max-width: 1150px;
+            margin: 20px auto;
+            text-align: center;
+        }
+        .header-box h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .header-box p {
+            margin: 0;
+            font-size: 1.08rem;
+            opacity: 0.96;
+        }
+        .section-title, .container h1 {
+            display: none !important;
+        }
+        #mic-indicator {
+            margin-left: 14px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #ccc;
+            border: 2px solid #232b4d;
+            box-shadow: 0 0 6px #232b4d22;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+        button, select, input[type="text"] {
+            font-size: 1em;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #bfc8e6;
+            margin: 2px;
+            background: #f3f6fa;
+            transition: box-shadow 0.2s;
+        }
+        button {
+            background: linear-gradient(90deg, #4f8cff 0%, #3358e6 100%);
+            color: white;
+            font-weight: 500;
+            border: none;
+            box-shadow: 0 2px 8px #4f8cff22;
+        }
+        button:disabled {
+            background: #c3cfe2;
+            color: #888;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            background: linear-gradient(90deg, #3358e6 0%, #4f8cff 100%);
+            box-shadow: 0 4px 16px #4f8cff33;
+        }
+        select {
+            background: #f3f6fa;
+            color: #232b4d;
+        }
+        #userTranslateInput {
+            width: 230px;
+            margin: 2px 0 16px 0;
+        }
+        #result, #translationResult {
+            margin-top: 18px;
+            font-size: 1.15em;
+            color: #232b4d;
+            background: #f5f7fa;
+            padding: 12px;
+            border-radius: 7px;
+            min-height: 2em;
+            box-shadow: 0 1px 4px #c3cfe233;
+        }
+        #translationResult {
+            font-weight: 600;
+            color: #2b7a0b;
+        }
+        #error {
+            color: #b71c1c;
+            margin-top: 10px;
+        }
+        #history {
+            margin-top: 28px;
+            text-align: left;
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #history h3 {
+            margin-bottom: 5px;
+            font-size: 1.1em;
+            color: #232b4d;
+        }
+        .history-item {
+            background: #f8f8f8;
+            padding: 8px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            word-break: break-all;
+            border-left: 4px solid #4f8cff;
+        }
+        @media (max-width: 900px) {
+            .main-flex { flex-direction: column; align-items: center; max-width: 100%; }
+            .container, .translate-container { max-width: 98vw; }
+            .header-box { max-width: 98vw; }
+        }
+        @media (max-width: 600px) {
+            .container { padding: 18px 4vw 18px 4vw; }
+            .header-box { padding: 18px 2vw 12px 2vw; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-box">
+            <h1>Communication Tools</h1>
+            <p style="font-size: 16px;">All-in-one platform for your communication needs</p>
+        </div>
+    </header>
+    <div class="tabs">
+        <a href="python_sms.html" class="tab-button">Send SMS</a>
+        <a href="send_bulk_email.html" class="tab-button">Send Email</a>
+        <a href="schedule_mail.html" class="tab-button">Schedule Email</a>
+        <a href="google_search.html" class="tab-button">Google Search</a>
+        <a href="speech_to_text.html" class="tab-button active">Voice Transcribe</a>
+    </div>
+    <div class="main-flex">
+        <div class="container">
+            <div class="controls">
+                <button id="startBtn">Start Speaking</button>
+                <button id="stopBtn" disabled>Stop</button>
+                <select id="langSelect">
+                    <option value="en-US">English (US)</option>
+                    <option value="en-GB">English (UK)</option>
+                    <option value="hi-IN">Hindi (India)</option>
+                    <option value="es-ES">Spanish (Spain)</option>
+                    <option value="fr-FR">French (France)</option>
+                    <option value="de-DE">German</option>
+                    <option value="zh-CN">Chinese (Mandarin)</option>
+                </select>
+                <button id="copyBtn">Copy</button>
+                <button id="downloadBtn">Download</button>
+                <button id="readAloudBtn">Read Aloud</button>
+            </div>
+            <div id="result"></div>
+            <div id="error"></div>
+            <div id="history">
+                <h3>Transcript History</h3>
+                <button id="clearHistoryBtn" style="margin-bottom:10px; background:#e53935; color:white;">Clear History</button>
+                <div id="historyList"></div>
+            </div>
+        </div>
+        <div class="translate-container">
+            <input type="text" id="userTranslateInput" placeholder="Type text to translate">
+            <select id="translateTarget" style="margin-left:0;">
+                <option value="en">Translate to English</option>
+                <option value="hi">Translate to Hindi</option>
+                <option value="es">Translate to Spanish</option>
+                <option value="fr">Translate to French</option>
+                <option value="de">Translate to German</option>
+                <option value="zh-cn">Translate to Chinese</option>
+            </select>
+            <p></p>
+            <button id="translateBtn">Translate</button>
+            <div id="translationResult"></div>
+        </div>
+    </div>
+    <script>
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const resultDiv = document.getElementById('result');
+    const errorDiv = document.getElementById('error');
+    const copyBtn = document.getElementById('copyBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const langSelect = document.getElementById('langSelect');
+    const historyList = document.getElementById('historyList');
+    const micIndicator = document.getElementById('mic-indicator');
+    const readAloudBtn = document.getElementById('readAloudBtn');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    const translateBtn = document.getElementById('translateBtn');
+    const translateTarget = document.getElementById('translateTarget');
+    const translationResult = document.getElementById('translationResult');
+
+    let recognition;
+    let transcriptFinal = '';
+    let isRecognizing = false;
+
+    // Load history from localStorage
+    function loadHistory() {
+        historyList.innerHTML = '';
+        const history = JSON.parse(localStorage.getItem('speechHistory') || '[]');
+        if (history.length === 0) {
+            historyList.innerHTML = '<em>No transcripts yet.</em>';
+            return;
+        }
+        history.slice().reverse().forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.textContent = item;
+            historyList.appendChild(div);
+        });
+    }
+
+    // Save to history
+    function saveToHistory(text) {
+        if (!text.trim()) return;
+        let history = JSON.parse(localStorage.getItem('speechHistory') || '[]');
+        history.push(text);
+        if (history.length > 20) history = history.slice(history.length - 20); // keep last 20
+        localStorage.setItem('speechHistory', JSON.stringify(history));
+        loadHistory();
+    }
+
+    // Copy to clipboard
+    copyBtn.onclick = () => {
+        if (!resultDiv.textContent.trim()) return;
+        navigator.clipboard.writeText(resultDiv.textContent)
+            .then(() => {
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => copyBtn.textContent = 'Copy', 1000);
+            });
+    };
+
+    // Download as file
+    downloadBtn.onclick = () => {
+        if (!resultDiv.textContent.trim()) return;
+        const blob = new Blob([resultDiv.textContent], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'transcript.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    // Read aloud for accessibility
+    readAloudBtn.onclick = () => {
+        const text = resultDiv.textContent.trim();
+        if (!text) return;
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = langSelect.value;
+        window.speechSynthesis.speak(utter);
+    };
+
+    // Clear history
+    clearHistoryBtn.onclick = () => {
+        localStorage.removeItem('speechHistory');
+        loadHistory();
+    };
+
+    // Translate transcript or user input
+    translateBtn.onclick = async () => {
+        let text = document.getElementById('userTranslateInput').value.trim();
+        if (!text) {
+            text = resultDiv.textContent.trim();
+        }
+        const targetLang = translateTarget.value;
+        translationResult.textContent = '';
+        if (!text) {
+            translationResult.textContent = 'No text to translate.';
+            return;
+        }
+        translationResult.textContent = 'Translating...';
+        try {
+            const res = await fetch('/cgi-bin/translate_text.py', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: text,
+                    target: targetLang
+                })
+            });
+            const data = await res.json();
+            if (data.translatedText) {
+                translationResult.textContent = data.translatedText;
+            } else {
+                translationResult.textContent = data.error || 'Translation failed.';
+            }
+        } catch (e) {
+            translationResult.textContent = 'Translation error.';
+        }
+    };
+
+    // Check for browser support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        errorDiv.textContent = 'Sorry, your browser does not support the Web Speech API.';
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
+    } else {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true; // continuous dictation
+        recognition.interimResults = true; // show interim results
+        recognition.lang = langSelect.value;
+
+        langSelect.onchange = () => {
+            recognition.lang = langSelect.value;
+        };
+
+        startBtn.onclick = () => {
+            errorDiv.textContent = '';
+            transcriptFinal = '';
+            resultDiv.textContent = '';
+            recognition.lang = langSelect.value;
+            recognition.start();
+            isRecognizing = true;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            micIndicator.classList.add('active'); // mic on
+        };
+
+        stopBtn.onclick = () => {
+            recognition.stop();
+            isRecognizing = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            micIndicator.classList.remove('active'); // mic off
+        };
+
+        recognition.onresult = (event) => {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    transcriptFinal += event.results[i][0].transcript + ' ';
+                } else {
+                    interim += event.results[i][0].transcript;
+                }
+            }
+            resultDiv.textContent = transcriptFinal + interim;
+        };
+
+        recognition.onend = () => {
+            isRecognizing = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            micIndicator.classList.remove('active'); // mic off
+            if (transcriptFinal.trim()) {
+                saveToHistory(transcriptFinal.trim());
+            }
+        };
+
+        recognition.onerror = (event) => {
+            errorDiv.textContent = 'Error: ' + event.error;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            micIndicator.classList.remove('active'); // mic off
+        };
+    }
+
+    // Load history on page load
+    loadHistory();
+    </script>
+</body>
+</html>

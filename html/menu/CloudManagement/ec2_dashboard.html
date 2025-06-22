@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EC2 Instance Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background-color: #f5f7fa;
+      color: #333;
+      line-height: 1.6;
+    }
+    .header-box {
+      background-color: #4a6fa5;
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 20px 0;
+      max-width: 1150px;
+      margin: 20px auto 30px auto;
+      text-align: center;
+    }
+    .header-box h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    .header-box p {
+      margin: 0;
+      font-size: 16px;
+      opacity: 0.96;
+    }
+    .dashboard-container {
+      background: #fff;
+      padding: 38px 32px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      max-width: 1150px;
+      margin: 0 auto 32px auto;
+    }
+    .dashboard-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .dashboard-actions .form-select {
+      min-width: 180px;
+    }
+    .dashboard-actions .btn {
+      margin-left: 8px;
+    }
+    .row {
+      margin-left: 0;
+      margin-right: 0;
+    }
+    .card {
+      background-color: white;
+      margin-bottom: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card:hover {
+      transform: scale(1.02);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    }
+    .btn-sm {
+      margin-right: 5px;
+    }
+    .badge {
+      font-size: 1em;
+    }
+    @media (max-width: 1150px) {
+      .header-box, .dashboard-container {
+        max-width: 98vw;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header-box">
+    <h1>EC2 Dashboard</h1>
+    <p style="font-size: 16px;">Overview and management of your AWS EC2 instances</p>
+  </div>
+  <div class="dashboard-container">
+    <div class="dashboard-actions mb-3">
+      <select id="regionSelect" class="form-select w-auto">
+        <option value="us-east-1">us-east-1</option>
+        <option value="ap-south-1" selected>ap-south-1</option>
+      </select>
+      <div>
+        <button class="btn btn-warning" onclick="fetchInstances()">Refresh</button>
+        <a href="/menu/AWSServices/launch_instance.html" class="btn btn-success">Launch New Instance</a>
+      </div>
+    </div>
+    <div id="dashboard" class="row"></div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+function fetchInstances() {
+  const region = document.getElementById("regionSelect").value;
+  const dashboard = document.getElementById("dashboard");
+  dashboard.innerHTML = "<p class='text-muted'>Loading...</p>";
+
+  fetch(`/cgi-bin/ec2_dashboard.py?regionName=${region}`)
+    .then(res => res.json())
+    .then(data => {
+      dashboard.innerHTML = "";
+      if (data.error) {
+        dashboard.innerHTML = `<div class='alert alert-danger'>${data.error}</div>`;
+        return;
+      }
+
+      data.forEach(inst => {
+        const volInfo = inst.VolumeInfo.map(v => `
+          <tr><td>${v.VolumeId}</td><td>${v["Size (GiB)"]}</td><td>${v.Type}</td><td>${v.State}</td></tr>
+        `).join("");
+
+        const cpuUsage = inst.CPU.join(", ") || "N/A";
+        const netIn = inst.NetworkIn.join(", ") || "N/A";
+
+        const card = `
+          <div class="col-md-6">
+            <div class="card p-4">
+              <h5 class="mb-2">${inst.Name}</h5>
+              <p><strong>ID:</strong> ${inst.InstanceID}</p>
+              <p><strong>State:</strong> <span class="badge bg-${inst.State === 'running' ? 'success' : 'secondary'}">${inst.State}</span></p>
+              <p><strong>Uptime:</strong> ${inst.Uptime}</p>
+              <p><strong>Type:</strong> ${inst.InstanceType}</p>
+              <p><strong>AMI:</strong> ${inst.AMI}</p>
+              <p><strong>Key Pair:</strong> ${inst.KeyName}</p>
+              <p><strong>Public IP:</strong> ${inst.PublicIP}</p>
+              <p><strong>Private IP:</strong> ${inst.PrivateIP}</p>
+              <p><strong>Security Groups:</strong> ${inst.SecurityGroups.join(", ")}</p>
+              <div class="mb-3">
+                <button class="btn btn-sm btn-success" onclick="controlInstance('start','${inst.InstanceID}')">Start</button>
+                <button class="btn btn-sm btn-warning" onclick="controlInstance('stop','${inst.InstanceID}')">Stop</button>
+                <button class="btn btn-sm btn-danger" onclick="controlInstance('terminate','${inst.InstanceID}')">Terminate</button>
+              </div>
+              <div>
+                <strong>Storage:</strong>
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered mt-2">
+                    <thead class="table-light"><tr><th>Volume ID</th><th>Size</th><th>Type</th><th>State</th></tr></thead>
+                    <tbody>${volInfo}</tbody>
+                  </table>
+                </div>
+              </div>
+              <p><strong>CPU Usage:</strong> ${cpuUsage}</p>
+              <p><strong>Network In:</strong> ${netIn}</p>
+            </div>
+          </div>`;
+        dashboard.innerHTML += card;
+      });
+    })
+    .catch(err => {
+      dashboard.innerHTML = `<div class='alert alert-danger'>Error: ${err}</div>`;
+    });
+}
+
+function controlInstance(action, id) {
+  const region = document.getElementById("regionSelect").value;
+  if (confirm(`Are you sure you want to ${action} instance ${id}?`)) {
+    fetch(`/cgi-bin/ec2_dashboard.py?action=${action}&instanceId=${id}&regionName=${region}`)
+      .then(res => res.json())
+      .then(msg => {
+        alert(msg.status || msg.error);
+        fetchInstances();
+      });
+  }
+}
+
+// Initial load
+fetchInstances();
+  </script>
+</body>
+</html>

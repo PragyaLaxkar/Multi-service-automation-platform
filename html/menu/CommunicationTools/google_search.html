@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            background-color: #4a6fa5;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .tab-button {
+            padding: 12px 24px;
+            background-color: #e0e0e0;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #333;
+            display: inline-block;
+        }
+        .tab-button.active, .tab-button:hover {
+            background-color: #4a6fa5;
+            color: white;
+        }
+        @media (max-width: 768px) {
+            .tabs {
+                flex-direction: column;
+                max-width: 100%;
+            }
+            .tab-button {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+        .info-card {
+            background: #fff;
+            padding: 34px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin: 36px 0 18px 0;
+        }
+        .search-bar input[type="text"] {
+            flex: 1;
+            padding: 16px 20px;
+            border-radius: 24px;
+            border: 1.5px solid #e0e0e0;
+            font-size: 18px;
+            background: #fff;
+            color: #222;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            transition: border-color 0.2s;
+        }
+        .search-bar input[type="text"]:focus {
+            border-color: #357ae8;
+            outline: none;
+        }
+        .search-bar button {
+            padding: 0 32px;
+            border-radius: 24px;
+            background: #4a6fa5;
+            color: #fff;
+            border: none;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .search-bar button:hover {
+            background: #3a5a8a;
+        }
+        .results {
+            margin-top: 24px;
+            text-align: left;
+        }
+        .result-item {
+            background: #f9f9f9;
+            padding: 18px 20px;
+            border-radius: 6px;
+            margin-bottom: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        }
+        .result-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4a6fa5;
+            margin-bottom: 6px;
+            text-decoration: none;
+            display: block;
+        }
+        .result-url {
+            font-size: 0.95rem;
+            color: #357ae8;
+            margin-bottom: 6px;
+            display: block;
+        }
+        .result-snippet {
+            color: #222;
+            font-size: 1rem;
+        }
+        .no-results {
+            color: #c0392b;
+            font-size: 1.1rem;
+            margin-top: 18px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Communication Tools</h1>
+            <p>All-in-one platform for your communication needs</p>
+        </header>
+        <div class="tabs">
+            <a href="python_sms.html" class="tab-button">Send SMS</a>
+            <a href="send_bulk_email.html" class="tab-button">Send Email</a>
+            <a href="schedule_mail.html" class="tab-button">Schedule Email</a>
+            <a href="google_search.html" class="tab-button active">Google Search</a>
+            <a href="speech_to_text.html" class="tab-button">Voice Transcribe</a>
+        </div>
+        <div class="info-card">
+            <h2>Google Search</h2>
+            <form id="searchForm" class="search-bar">
+                <input type="text" id="query" name="q" placeholder="Search..." required>
+                <button type="submit" id="searchBtn">Search</button>
+            </form>
+            <div id="results" class="results"></div>
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById('searchForm');
+        const resultsDiv = document.getElementById('results');
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const query = document.getElementById('query').value;
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            fetch(`/cgi-bin/google_search.py?q=${encodeURIComponent(query)}`)
+                .then(response => response.text())
+                .then(data => {
+                    try {
+                        const results = JSON.parse(data);
+                        if (results.error) {
+                            resultsDiv.innerHTML = `<div class="error">${results.error}</div>`;
+                            return;
+                        }
+                        if (results.length === 0) {
+                            resultsDiv.innerHTML = `<div class="no-results">No results found.</div>`;
+                            return;
+                        }
+                        let resultsHTML = '';
+                        results.forEach(result => {
+                            // Generate a random date for demo purposes
+                            const randomDate = new Date();
+                            randomDate.setDate(randomDate.getDate() - Math.floor(Math.random() * 30));
+                            const formattedDate = randomDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                            resultsHTML += `
+                                <div class="result-item">
+                                    <div class="meta">
+                                        <span>${result.link.split('/')[2] || 'Web'}</span>
+                                        <span>${formattedDate}</span>
+                                        <span>${Math.floor(Math.random() * 10000) + 1000} visits</span>
+                                    </div>
+                                    <a href="${result.link}" target="_blank" class="result-title">${result.title}</a>
+                                    <span class="result-url">${result.link}</span>
+                                    <div class="result-snippet">${result.snippet}</div>
+                                </div>
+                            `;
+                        });
+                        resultsDiv.innerHTML = resultsHTML;
+                    } catch (e) {
+                        resultsDiv.innerHTML = data;
+                    }
+                })
+                .catch(error => {
+                    resultsDiv.innerHTML = `<div class="error">Error: ${error}</div>`;
+                });
+        });
+    </script>
+</body>
+</html>

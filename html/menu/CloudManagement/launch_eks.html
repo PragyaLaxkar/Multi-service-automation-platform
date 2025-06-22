@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Launch AWS EKS Cluster</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(to right, #ece9e6, #ffffff);
+            font-family: 'Inter', 'Roboto', Arial, sans-serif;
+        }
+        .container {
+            margin-top: 50px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .table thead th {
+            background: #f3f3f3;
+            font-weight: 600;
+        }
+        .table-hover tbody tr:hover {
+            background: #f8f9fa;
+        }
+        .cluster-actions button {
+            margin-right: 4px;
+        }
+        .modal-lg {
+            max-width: 700px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">EKS Cluster Manager</h2>
+        <a href="/menu/AWSServices/eks_dashboard.html" class="btn btn-outline-primary">EKS Dashboard</a>
+    </div>
+    <!-- Enhanced EKS Management Tabs -->
+    <ul class="nav nav-tabs mt-4" id="eksFeatureTabs" role="tablist">
+        <li class="nav-item" role="presentation"><button class="nav-link active" id="launch-tab2" data-bs-toggle="tab" data-bs-target="#tab-launch" type="button" role="tab">Launch Cluster</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="nodegroup-tab" data-bs-toggle="tab" data-bs-target="#tab-nodegroup" type="button" role="tab">Node Groups</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="vpc-tab" data-bs-toggle="tab" data-bs-target="#tab-vpc" type="button" role="tab">VPC/Subnets</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="addons-tab" data-bs-toggle="tab" data-bs-target="#tab-addons" type="button" role="tab">EKS Add-ons</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="upgrade-tab" data-bs-toggle="tab" data-bs-target="#tab-upgrade" type="button" role="tab">Upgrade Cluster</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="template-tab" data-bs-toggle="tab" data-bs-target="#tab-template" type="button" role="tab">Templates</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="clusters-tab" data-bs-toggle="tab" data-bs-target="#clusters" type="button" role="tab">Clusters</button></li>
+    </ul>
+    <div class="tab-content p-4 border border-top-0 bg-white" id="eksFeatureTabContent" style="min-height:350px">
+        <!-- Launch Cluster Tab -->
+        <div class="tab-pane fade show active" id="tab-launch" role="tabpanel">
+            <div class="card mb-4"><div class="card-body">
+                <form id="launch-eks-form">
+                    <input type="hidden" name="action" value="create">
+                    <div class="mb-3"><label>Cluster Name:</label><input type="text" name="clusterName" class="form-control" required></div>
+                    <div class="mb-3"><label>Kubernetes Version:</label><select name="version" class="form-control" required><option value="1.29">1.29</option><option value="1.28">1.28</option><option value="1.27">1.27</option></select></div>
+                    <div class="mb-3"><label>Region:</label><select name="regionName" class="form-control" required><option value="us-east-1">us-east-1</option><option value="ap-south-1">ap-south-1</option><option value="eu-west-1">eu-west-1</option><option value="ap-northeast-1">ap-northeast-1</option><option value="ap-northeast-2">ap-northeast-2</option></select></div>
+                    <div class="mb-3"><label>Subnet IDs (comma separated, at least 2):</label><input type="text" name="subnetIds" class="form-control" placeholder="subnet-xxxxxxx,subnet-yyyyyyy" required></div>
+                    <div class="mb-3"><label>EKS Cluster Role ARN:</label><input type="text" name="eksRoleArn" class="form-control" required></div>
+                    <button type="submit" class="btn btn-primary mt-2">Launch Cluster</button>
+                    <div class="spinner-border text-primary ms-3" role="status" id="loader"></div>
+                </form>
+                <div id="launchResult" class="mt-4 alert alert-info"></div>
+            </div></div>
+        </div>
+        <!-- Node Group Tab -->
+        <div class="tab-pane fade" id="tab-nodegroup" role="tabpanel">
+            <div class="card mb-4"><div class="card-body">
+                <h5 class="mb-3">Create Node Group (for ACTIVE clusters)</h5>
+                <form id="launch-nodegroup-form">
+                    <input type="hidden" name="action" value="create_nodegroup">
+                    <div class="mb-2"><label>Cluster Name:</label><input type="text" name="clusterName" class="form-control" required></div>
+                    <div class="mb-2"><label>Node Group Name:</label><input type="text" name="nodeGroupName" class="form-control" required></div>
+                    <div class="mb-2"><label>Node Instance Type:</label><select name="instanceType" class="form-control" required><option value="t2.micro">t2.micro</option><option value="t2.small">t2.small</option><option value="t2.medium">t2.medium</option><option value="t2.large">t2.large</option><option value="t3.medium">t3.medium</option><option value="t3.large">t3.large</option></select></div>
+                    <div class="mb-2"><label>Node Count:</label><input type="number" name="nodeCount" class="form-control" min="1" value="2" required></div>
+                    <div class="mb-2"><label>Subnet IDs (comma separated, at least 2):</label><input type="text" name="subnetIds" class="form-control" placeholder="subnet-xxxxxxx,subnet-yyyyyyy" required></div>
+                    <div class="mb-2"><label>EKS Nodegroup Role ARN:</label><input type="text" name="nodegroupRoleArn" class="form-control" required></div>
+                    <div class="mb-2"><label>Region:</label><select name="regionName" class="form-control" required><option value="us-east-1">us-east-1</option><option value="ap-south-1">ap-south-1</option><option value="eu-west-1">eu-west-1</option><option value="ap-northeast-1">ap-northeast-1</option><option value="ap-northeast-2">ap-northeast-2</option></select></div>
+                    <button type="submit" class="btn btn-success mt-2">Create Node Group</button>
+                    <div class="spinner-border text-success ms-3" role="status" id="loaderNodegroup"></div>
+                </form>
+                <div id="nodegroupResult" class="mt-4 alert alert-info"></div>
+                <hr/>
+                <h5>Node Group Management</h5>
+                <div class="mb-3"><label>Cluster Name:</label><input type="text" id="ngm-cluster" class="form-control mb-2" placeholder="Enter cluster name"><button class="btn btn-primary mb-2" id="listNodeGroupsBtn">List Node Groups</button><div id="nodegroupsList"></div></div>
+                <div id="nodegroupActions" style="display:none;"><h6>Node Groups</h6><div class="table-responsive"><table class="table table-sm" id="ngTable"><thead><tr><th>Name</th><th>Actions</th></tr></thead><tbody></tbody></table></div><div id="scaleNodeGroupDiv" style="display:none;"><h6>Scale Node Group</h6><form id="scaleNodeGroupForm"><input type="hidden" name="action" value="scale_nodegroup"><input type="hidden" name="clusterName" id="scaleClusterName"><input type="hidden" name="nodeGroupName" id="scaleNodeGroupName"><label>Min Size:</label><input type="number" name="minSize" class="form-control" required><label>Max Size:</label><input type="number" name="maxSize" class="form-control" required><label>Desired Size:</label><input type="number" name="desiredSize" class="form-control" required><button type="submit" class="btn btn-success mt-2">Scale</button></form><div id="scaleResult"></div></div></div>
+            </div></div>
+        </div>
+        <!-- VPC/Subnets Tab -->
+        <div class="tab-pane fade" id="tab-vpc" role="tabpanel">
+            <div class="card mb-4"><div class="card-body">
+                <h5>VPC/Subnet Selection</h5>
+                <div class="mb-3"><button class="btn btn-secondary" id="listVpcsBtn">List VPCs</button><select id="vpcSelect" class="form-select mb-2"></select><button class="btn btn-secondary" id="listSubnetsBtn">List Subnets</button><select id="subnetSelect" class="form-select mb-2" multiple></select></div>
+            </div></div>
+        </div>
+        <!-- EKS Add-ons Tab -->
+        <div class="tab-pane fade" id="tab-addons" role="tabpanel">
+            <div class="card mb-4"><div class="card-body">
+                <h5>EKS Add-ons</h5>
+                <div class="mb-3"><label class="me-3"><input type="checkbox" class="addonChk" value="coredns"> CoreDNS</label><label class="me-3"><input type="checkbox" class="addonChk" value="kube-proxy"> kube-proxy</label><label class="me-3"><input type="checkbox" class="addonChk" value="vpc-cni"> VPC CNI</label><label class="me-3"><input type="checkbox" class="addonChk" value="aws-load-balancer-controller"> AWS LB Controller</label><button class="btn btn-info btn-sm ms-3" id="applyAddonsBtn">Apply Add-ons</button><div id="addonsResult" class="mt-2"></div></div>
+            </div></div>
+        </div>
+        <!-- Upgrade Cluster Tab -->
+        <div class="tab-pane fade" id="tab-upgrade" role="tabpanel">
+            <div class="card mb-4"><div class="card-body">
+                <h5>Cluster Upgrade</h5>
+                <div class="mb-3"><input type="text" id="upgradeClusterName" class="form-control mb-2" placeholder="Cluster name"><select id="upgradeVersion" class="form-select mb-2"><option value="1.29">1.29</option><option value="1.28">1.28</option><option value="1.27">1.27</option></select><button class="btn btn-warning" id="upgradeClusterBtn">Upgrade Cluster</button><div id="upgradeResult" class="mt-2"></div></div>
+            </div></div>
+        </div>
+        <!-- Templates Tab -->
+        <div class="tab-pane fade" id="tab-template" role="tabpanel">
+            <div class="card mb-4"><div class="card-body">
+                <h5>Template Save/Load</h5>
+                <div class="mb-3"><textarea id="templateConfig" class="form-control mb-2" rows="3" placeholder="Paste cluster config JSON here..."></textarea><input type="text" id="templateName" class="form-control mb-2" placeholder="Template name"><button class="btn btn-success" id="saveTemplateBtn">Save Template</button><button class="btn btn-primary ms-2" id="loadTemplateBtn">Load Template</button><div id="templateResult" class="mt-2"></div></div>
+            </div></div>
+        </div>
+        <!-- Clusters Tab -->
+        <div class="tab-pane fade" id="clusters" role="tabpanel">
+            <div class="row mb-2">
+                <div class="col-md-4">
+                    <label for="clustersRegion" class="form-label">Region:</label>
+                    <select id="clustersRegion" class="form-select">
+                        <option value="us-east-1">us-east-1</option>
+                        <option value="ap-south-1">ap-south-1</option>
+                        <option value="eu-west-1">eu-west-1</option>
+                        <option value="ap-northeast-1">ap-northeast-1</option>  
+                        <option value="ap-northeast-2">ap-northeast-2</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button id="refreshClusters" class="btn btn-secondary">Refresh Clusters</button>
+                </div>
+            </div>
+            <table class="table table-bordered table-hover" id="clustersTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Version</th>
+                        <th>ARN</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <div id="clustersResult"></div>
+        </div>
+    </div>
+    <div class="modal fade" id="metaModal" tabindex="-1" aria-labelledby="metaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="metaModalLabel">Cluster Metadata</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <pre id="metaJson" style="font-size:1rem;"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const loader = document.getElementById('loader');
+        loader.style.display = 'none';
+        const loaderNodegroup = document.getElementById('loaderNodegroup');
+        loaderNodegroup.style.display = 'none';
+        // Launch EKS Cluster Form
+        document.getElementById('launch-eks-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            loader.style.display = 'inline-block';
+            document.getElementById('launchResult').innerHTML = '';
+            const formData = new FormData(this);
+            fetch('/cgi-bin/launch_eks.py', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    loader.style.display = 'none';
+                    document.getElementById('launchResult').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                })
+                .catch(err => {
+                    loader.style.display = 'none';
+                    document.getElementById('launchResult').innerText = 'Error: ' + err;
+                });
+        });
+        // Nodegroup Form
+        document.getElementById('launch-nodegroup-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            loaderNodegroup.style.display = 'inline-block';
+            document.getElementById('nodegroupResult').innerHTML = '';
+            const formData = new FormData(this);
+            fetch('/cgi-bin/launch_eks.py', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    loaderNodegroup.style.display = 'none';
+                    document.getElementById('nodegroupResult').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                })
+                .catch(err => {
+                    loaderNodegroup.style.display = 'none';
+                    document.getElementById('nodegroupResult').innerText = 'Error: ' + err;
+                });
+        });
+        // Node Group Management
+        const ngmCluster = document.getElementById('ngm-cluster');
+        document.getElementById('listNodeGroupsBtn').onclick = function() {
+            const cluster = ngmCluster.value;
+            fetch(`/cgi-bin/launch_eks.py?action=list_nodegroups&clusterName=${cluster}`)
+                .then(res => res.json())
+                .then(data => {
+                    const ngTable = document.getElementById('ngTable').querySelector('tbody');
+                    ngTable.innerHTML = '';
+                    if (data.nodegroups && data.nodegroups.length) {
+                        document.getElementById('nodegroupActions').style.display = '';
+                        data.nodegroups.forEach(ng => {
+                            ngTable.innerHTML += `<tr><td>${ng}</td><td><button class='btn btn-danger btn-sm del-ng' data-ng='${ng}'>Delete</button> <button class='btn btn-info btn-sm scale-ng' data-ng='${ng}'>Scale</button></td></tr>`;
+                        });
+                    } else {
+                        document.getElementById('nodegroupActions').style.display = 'none';
+                        ngTable.innerHTML = '<tr><td colspan=2>No node groups found.</td></tr>';
+                    }
+                });
+        };
+        document.getElementById('ngTable').onclick = function(e) {
+            const cluster = ngmCluster.value;
+            if (e.target.classList.contains('del-ng')) {
+                if (confirm('Delete node group?')) {
+                    fetch(`/cgi-bin/launch_eks.py?action=delete_nodegroup&clusterName=${cluster}&nodeGroupName=${e.target.dataset.ng}`)
+                        .then(res => res.json())
+                        .then(data => { alert(data.message || data.error); document.getElementById('listNodeGroupsBtn').click(); });
+                }
+            } else if (e.target.classList.contains('scale-ng')) {
+                document.getElementById('scaleNodeGroupDiv').style.display = '';
+                document.getElementById('scaleClusterName').value = cluster;
+                document.getElementById('scaleNodeGroupName').value = e.target.dataset.ng;
+            }
+        };
+        document.getElementById('scaleNodeGroupForm').onsubmit = function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch('/cgi-bin/launch_eks.py', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => { document.getElementById('scaleResult').innerText = data.message || data.error; });
+        };
+        // VPC/Subnet Selection
+        const vpcSelect = document.getElementById('vpcSelect');
+        document.getElementById('listVpcsBtn').onclick = function() {
+            fetch('/cgi-bin/launch_eks.py?action=list_vpcs')
+                .then(res => res.json())
+                .then(data => {
+                    vpcSelect.innerHTML = '';
+                    (data.vpcs || []).forEach(v => { vpcSelect.innerHTML += `<option value='${v.VpcId}'>${v.VpcId} (${v.CidrBlock})</option>`; });
+                });
+        };
+        document.getElementById('listSubnetsBtn').onclick = function() {
+            fetch(`/cgi-bin/launch_eks.py?action=list_subnets&vpcId=${vpcSelect.value}`)
+                .then(res => res.json())
+                .then(data => {
+                    const subnetSelect = document.getElementById('subnetSelect');
+                    subnetSelect.innerHTML = '';
+                    (data.subnets || []).forEach(s => { subnetSelect.innerHTML += `<option value='${s.SubnetId}'>${s.SubnetId} (${s.CidrBlock})</option>`; });
+                });
+        };
+        // EKS Add-ons
+        const addonChks = document.querySelectorAll('.addonChk');
+        document.getElementById('applyAddonsBtn').onclick = function() {
+            const cluster = ngmCluster.value;
+            addonChks.forEach(chk => {
+                const action = chk.checked ? 'enable' : 'disable';
+                fetch(`/cgi-bin/launch_eks.py?action=eks_addons&clusterName=${cluster}&addonName=${chk.value}&addonAction=${action}`)
+                    .then(res => res.json())
+                    .then(data => { document.getElementById('addonsResult').innerText = data.message || data.error; });
+            });
+        };
+        // Cluster Upgrade
+        const upgradeBtn = document.getElementById('upgradeClusterBtn');
+        upgradeBtn.onclick = function() {
+            const cluster = document.getElementById('upgradeClusterName').value;
+            const version = document.getElementById('upgradeVersion').value;
+            fetch(`/cgi-bin/launch_eks.py?action=upgrade_cluster&clusterName=${cluster}&version=${version}`)
+                .then(res => res.json())
+                .then(data => { document.getElementById('upgradeResult').innerText = data.message || data.error; });
+        };
+        // Template Save/Load
+        const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+        saveTemplateBtn.onclick = function() {
+            const config = document.getElementById('templateConfig').value;
+            const name = document.getElementById('templateName').value;
+            const formData = new FormData();
+            formData.append('action', 'save_template');
+            formData.append('config', config);
+            formData.append('templateName', name);
+            fetch('/cgi-bin/launch_eks.py', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => { document.getElementById('templateResult').innerText = data.message || data.error; });
+        };
+        document.getElementById('loadTemplateBtn').onclick = function() {
+            const name = document.getElementById('templateName').value;
+            fetch(`/cgi-bin/launch_eks.py?action=load_template&templateName=${name}`)
+                .then(res => res.json())
+                .then(data => { document.getElementById('templateConfig').value = data.config || data.error; });
+        };
+        // Clusters Table
+        function loadClusters() {
+            const region = document.getElementById('clustersRegion').value;
+            fetch(`/cgi-bin/launch_eks.py?action=list&regionName=${region}`)
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.querySelector('#clustersTable tbody');
+                    tbody.innerHTML = '';
+                    (data.clusters || []).forEach(clu => {
+                        tbody.innerHTML += `<tr>
+                            <td>${clu.name}</td>
+                            <td>${clu.status}</td>
+                            <td>${clu.version}</td>
+                            <td style="max-width:200px;overflow:auto;">${clu.arn}</td>
+                            <td class='cluster-actions'>
+                                <button class='btn btn-info btn-sm meta-clu' data-name='${clu.name}'>Metadata</button>
+                                <button class='btn btn-danger btn-sm delete-clu' data-name='${clu.name}'>Delete</button>
+                            </td>
+                        </tr>`;
+                    });
+                })
+                .catch(err => {
+                    document.getElementById('clustersResult').innerText = 'Error: ' + err;
+                });
+        }
+        document.getElementById('refreshClusters').addEventListener('click', loadClusters);
+        document.getElementById('clustersRegion').addEventListener('change', loadClusters);
+        document.querySelector('#clustersTable').addEventListener('click', function (e) {
+            const region = document.getElementById('clustersRegion').value;
+            if (e.target.classList.contains('meta-clu')) {
+                fetch(`/cgi-bin/launch_eks.py?action=describe&clusterName=${e.target.dataset.name}&regionName=${region}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) {
+                            document.getElementById('metaJson').textContent = 'Error: ' + data.error;
+                        } else if (data.metadata) {
+                            document.getElementById('metaJson').textContent = JSON.stringify(data.metadata, null, 2);
+                        } else {
+                            document.getElementById('metaJson').textContent = 'No metadata found.';
+                        }
+                        new bootstrap.Modal(document.getElementById('metaModal')).show();
+                    })
+                    .catch(err => {
+                        document.getElementById('metaJson').textContent = 'Error: ' + err;
+                        new bootstrap.Modal(document.getElementById('metaModal')).show();
+                    });
+            } else if (e.target.classList.contains('delete-clu')) {
+                if (confirm('Are you sure you want to delete this cluster?')) {
+                    fetch(`/cgi-bin/launch_eks.py?action=delete&clusterName=${e.target.dataset.name}&regionName=${region}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            alert(data.message || data.error);
+                            loadClusters();
+                        })
+                        .catch(err => {
+                            alert('Error: ' + err);
+                        });
+                }
+            }
+        });
+        // Initial load
+        loadClusters();
+    </script>
+</div>
+</body>
+</html>

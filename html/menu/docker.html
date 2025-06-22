@@ -1,0 +1,493 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DockEase</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 30px;
+            height: 30px;
+            -webkit-animation: spin 2s linear infinite; /* Safari */
+            animation: spin 2s linear infinite;
+        }
+
+        /* Safari */
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-black text-green-500 font-mono">
+    <header class="bg-gray-900 text-white text-center py-6 border-b border-gray-700">
+        <h1 class="text-4xl font-bold">Docker Automation</h1>
+    </header>
+
+    <main class="container mx-auto mt-10 px-4">
+        <!-- Docker Images Section -->
+        <section class="bg-gray-800 shadow-lg rounded-lg p-8 mb-10 md:mb-12 md:mx-4 md:p-10">
+            <h2 class="text-3xl font-semibold mb-6">Pulled Images</h2>
+            <div class="flex flex-col md:flex-row items-center md:justify-between mb-6 space-y-4 md:space-y-0">
+                <input type="text" id="imageName" class="border border-gray-600 bg-gray-700 p-3 rounded w-full md:w-auto text-green-500 placeholder-gray-500" placeholder="Enter Image Name">
+                <div class="flex space-x-4">
+                    <button id="pullImage" onclick="PullImage()" class="bg-red-600 text-white p-3 rounded hover:bg-green-700">Pull Image</button>
+                    <button id="getAllImages" onclick="GetAllImages()" class="bg-gray-700 text-white p-3 rounded hover:bg-gray-600">Get All Images</button>
+                    <button id="showRunningContainers" onclick="getAllRunningContainers()" class="bg-gray-700 text-white p-3 rounded hover:bg-gray-600">Show Running Containers</button>
+                </div>
+            </div>
+            <div id="loading" class="loader mx-auto" style="display: none;"></div>
+            <div id="getOutput" class="border border-gray-600 p-4 rounded h-64 overflow-auto bg-gray-900 text-white"></div>
+        </section>
+
+        <!-- Container Management Section -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-12 mb-10 md:mb-12 px-0 md:px-4">
+            <div class="bg-gray-800 shadow-lg rounded-lg p-8 md:p-10">
+                <h2 class="text-2xl font-semibold mb-6">Launch a Container</h2>
+                <input type="text" id="launchAnContainer" class="border border-gray-600 bg-gray-700 p-3 rounded w-full mb-4 text-green-500 placeholder-gray-500" placeholder="Enter Container Name">
+                <button id="launchContainer" onclick="launchAnContainer()" class="bg-green-600 text-white p-3 rounded w-full hover:bg-green-700">Launch a Container</button>
+            </div>
+            <div class="bg-gray-800 shadow-lg rounded-lg p-8 md:p-10">
+                <h2 class="text-2xl font-semibold mb-6">Start Container</h2>
+                <input type="text" id="containerNameStart" class="border border-gray-600 bg-gray-700 p-3 rounded w-full mb-4 text-green-500 placeholder-gray-500" placeholder="Enter Container Name">
+                <button id="startContainer" onclick="StartContainer()" class="bg-green-600 text-white p-3 rounded w-full hover:bg-green-700">Start Container</button>
+            </div>
+            <div class="bg-gray-800 shadow-lg rounded-lg p-8 md:p-10">
+                <h2 class="text-2xl font-semibold mb-6">Stop Container</h2>
+                <input type="text" id="containerNameStop" class="border border-gray-600 bg-gray-700 p-3 rounded w-full mb-4 text-green-500 placeholder-gray-500" placeholder="Enter Container Name">
+                <button id="stopContainer" onclick="StopContainer()" class="bg-red-600 text-white p-3 rounded w-full hover:bg-red-700">Stop Container</button>
+            </div>
+        </section>
+
+        <!-- Docker Management Dashboard Section -->
+        <section class="bg-gray-800 shadow-lg rounded-lg p-8 md:p-12 mb-10 md:mb-14 md:mx-4">
+            <h2 class="text-3xl font-semibold mb-6">Docker Containers</h2>
+            <div class="flex flex-col md:flex-row items-center md:justify-between mb-6 space-y-4 md:space-y-0">
+                <button onclick="listAllContainers()" class="bg-blue-700 text-white p-3 rounded hover:bg-blue-800">List All Containers</button>
+                <button onclick="showStats()" class="bg-purple-700 text-white p-3 rounded hover:bg-purple-800">Show Resource Usage</button>
+                <button onclick="listImages()" class="bg-yellow-700 text-white p-3 rounded hover:bg-yellow-800">List Images</button>
+                <button onclick="listNetworks()" class="bg-green-700 text-white p-3 rounded hover:bg-green-800">List Networks</button>
+                <button onclick="listVolumes()" class="bg-pink-700 text-white p-3 rounded hover:bg-pink-800">List Volumes</button>
+            </div>
+            <div id="dockerTableOutput" class="border border-gray-600 p-4 rounded h-96 overflow-auto bg-gray-900 text-white"></div>
+        </section>
+
+        <!-- Dockerfile Creator Section -->
+        <section class="bg-gray-800 shadow-lg rounded-lg p-8 md:p-12 mb-10 md:mb-14 md:mx-4">
+            <h2 class="text-3xl font-semibold mb-6">Create Dockerfile</h2>
+            <div class="mb-6 flex flex-col md:flex-row gap-4">
+                <button onclick="showWriteDockerfile()" class="bg-blue-700 text-white p-3 rounded hover:bg-blue-800">Write Dockerfile</button>
+                <input type="file" id="dockerfileUpload" accept=".dockerfile,.txt" class="bg-gray-700 text-white p-3 rounded" onchange="uploadDockerfile(event)">
+            </div>
+            <div id="dockerfileEditorContainer" class="hidden">
+                <textarea id="dockerfileEditor" rows="12" class="w-full p-3 bg-white text-black font-mono rounded border border-gray-600 mb-4" style="min-height: 250px; tab-size:4; font-size:1rem;" placeholder="FROM python:3.11\nRUN pip install flask\nCMD ['python3', 'app.py']"></textarea>
+                <div class="flex flex-col md:flex-row gap-4 mb-4">
+                    <button onclick="saveDockerfile()" class="bg-green-700 text-white p-3 rounded hover:bg-green-800">Save Dockerfile</button>
+                    <input type="text" id="dockerImageName" class="border border-gray-600 bg-gray-100 p-3 rounded text-black placeholder-gray-500" placeholder="Enter image name (e.g. myimage:latest)">
+                    <button onclick="buildDockerImage()" class="bg-purple-700 text-white p-3 rounded hover:bg-purple-800">Build Docker Image</button>
+                </div>
+                <span id="dockerfileSaveStatus" class="ml-4"></span>
+            </div>
+        </section>
+
+        <!-- Modal for Logs, Inspect, Exec Output -->
+        <div id="modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden">
+            <div class="bg-gray-900 p-8 rounded-lg shadow-lg w-full max-w-2xl relative max-h-[80vh] flex flex-col">
+                <button onclick="closeModal()" class="absolute top-2 right-2 text-white text-2xl">&times;</button>
+                <div id="modalContent" class="text-white whitespace-pre-wrap overflow-auto max-h-[65vh] mt-8"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function showLoader() {
+            document.getElementById("loading").style.display = "block";
+        }
+
+        function hideLoader() {
+            document.getElementById("loading").style.display = "none";
+        }
+
+        function showModal(content) {
+            // If content looks like JSON, pretty print it
+            let formatted = content;
+            try {
+                if (content.trim().startsWith('{') || content.trim().startsWith('[')) {
+                    formatted = '<pre>' + JSON.stringify(JSON.parse(content), null, 2) + '</pre>';
+                }
+            } catch (e) {}
+            document.getElementById('modalContent').innerHTML = formatted;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        function GetAllImages() {
+            showLoader();
+            const url = "/cgi-bin/docker.py?cmd=docker%20images";
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4) {
+                    hideLoader();
+                    if (xhr.status == 200) {
+                        document.getElementById("getOutput").innerHTML = xhr.responseText;
+                    } else {
+                        console.log(xhr.response);
+                        document.getElementById("getOutput").innerHTML = "Something went wrong";
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function PullImage() {
+            showLoader();
+            const imageName = document.getElementById("imageName").value;
+            const url = "/cgi-bin/docker.py?cmd=docker%20pull%20"+imageName;
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4) {
+                    hideLoader();
+                    if (xhr.status == 200) {
+                        document.getElementById("getOutput").innerHTML = xhr.responseText;
+                    } else {
+                        console.log(xhr.response);
+                        document.getElementById("getOutput").innerHTML = "Something went wrong";
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function StartContainer() {
+            showLoader();
+            const containerName = document.getElementById("containerNameStart").value;
+            const url = "/cgi-bin/docker.py?cmd=docker%20start%20"+containerName;
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4) {
+                    hideLoader();
+                    if (xhr.status == 200) {
+                        document.getElementById("getOutput").innerHTML = xhr.responseText;
+                    } else {
+                        console.log(xhr.response);
+                        document.getElementById("getOutput").innerHTML = "Something went wrong";
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function StopContainer() {
+            showLoader();
+            const containerName = document.getElementById("containerNameStop").value;
+            const url = "/cgi-bin/docker.py?cmd=docker%20stop%20"+containerName;
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4) {
+                    hideLoader();
+                    if (xhr.status == 200) {
+                        document.getElementById("getOutput").innerHTML = xhr.responseText;
+                    } else {
+                        console.log(xhr.response);
+                        document.getElementById("getOutput").innerHTML = "Something went wrong";
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function getAllRunningContainers() {
+            showLoader();
+            const url = "/cgi-bin/docker.py?cmd=docker%20ps";
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4) {
+                    hideLoader();
+                    if (xhr.status == 200) {
+                        document.getElementById("getOutput").innerHTML = xhr.responseText;
+                    } else {
+                        console.log(xhr.response);
+                        document.getElementById("getOutput").innerHTML = "Something went wrong";
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function launchAnContainer(){
+            showLoader();
+            const containerName = document.getElementById("launchAnContainer").value;
+            const url = "/cgi-bin/docker.py?cmd=docker%20run%20-dit%20"+containerName;
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4) {
+                    hideLoader();
+                    if (xhr.status == 200) {
+                        document.getElementById("getOutput").innerHTML = xhr.responseText;
+                    } else {
+                        console.log(xhr.response);
+                        document.getElementById("getOutput").innerHTML = "Something went wrong";
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        // List All Containers
+        function listAllContainers() {
+            showLoader();
+            fetch('/cgi-bin/docker.py?cmd=docker%20ps%20-a%20--format%20\"{{json%20.}}\"')
+                .then(r => r.text())
+                .then(txt => {
+                    hideLoader();
+                    // Each line is a JSON object
+                    const lines = txt.split('\n').filter(l => l.trim());
+                    let rows = lines.map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+                    if (!rows.length) { document.getElementById('dockerTableOutput').innerHTML = txt; return; }
+                    let html = `<table class='w-full text-sm'><thead><tr>`;
+                    Object.keys(rows[0]).forEach(k => { html += `<th class='border px-2 py-1'>${k}</th>`; });
+                    html += `<th class='border px-2 py-1'>Actions</th></tr></thead><tbody>`;
+                    rows.forEach(r => {
+                        html += `<tr>`;
+                        Object.values(r).forEach(v => html += `<td class='border px-2 py-1'>${v}</td>`);
+                        html += `<td class='border px-2 py-1'>`;
+                        html += `<button onclick=\"restartContainer('${r.Names}')\" class='bg-yellow-600 text-white px-2 py-1 rounded m-1'>Restart</button>`;
+                        if (r.Status && r.Status.startsWith('Exited')) {
+                            html += `<button onclick=\"removeContainer('${r.Names}')\" class='bg-red-600 text-white px-2 py-1 rounded m-1'>Remove</button>`;
+                        }
+                        html += `<button onclick=\"viewLogs('${r.Names}')\" class='bg-blue-600 text-white px-2 py-1 rounded m-1'>Logs</button>`;
+                        html += `<button onclick=\"execCommandPrompt('${r.Names}')\" class='bg-green-600 text-white px-2 py-1 rounded m-1'>Exec</button>`;
+                        html += `<button onclick=\"inspectItem('container','${r.Names}')\" class='bg-gray-600 text-white px-2 py-1 rounded m-1'>Inspect</button>`;
+                        html += `</td></tr>`;
+                    });
+                    html += `</tbody></table>`;
+                    document.getElementById('dockerTableOutput').innerHTML = html;
+                });
+        }
+
+        // Restart Container
+        function restartContainer(name) {
+            showLoader();
+            fetch(`/cgi-bin/docker.py?cmd=docker%20restart%20${name}`)
+                .then(r => r.text()).then(txt => { hideLoader(); alert(txt); listAllContainers(); });
+        }
+        // Remove Container
+        function removeContainer(name) {
+            if (!confirm('Remove container ' + name + '?')) return;
+            showLoader();
+            fetch(`/cgi-bin/docker.py?cmd=docker%20rm%20${name}`)
+                .then(r => r.text()).then(txt => { hideLoader(); alert(txt); listAllContainers(); });
+        }
+        // View Logs
+        function viewLogs(name) {
+            showLoader();
+            fetch(`/cgi-bin/docker.py?cmd=docker%20logs%20${name}`)
+                .then(r => r.text()).then(txt => { hideLoader(); showModal(txt); });
+        }
+        // Exec Command in Container
+        function execCommandPrompt(name) {
+            const cmd = prompt(`Enter command to execute in ${name}`);
+            if (!cmd) return;
+            showLoader();
+            fetch(`/cgi-bin/docker.py?cmd=docker%20exec%20${name}%20${encodeURIComponent(cmd)}`)
+                .then(r => r.text()).then(txt => { hideLoader(); showModal(txt); });
+        }
+        // Inspect Container or Image
+        function inspectItem(type, name) {
+            showLoader();
+            fetch(`/cgi-bin/docker.py?cmd=docker%20inspect%20${name}`)
+                .then(r => r.text()).then(txt => { hideLoader(); showModal(txt); });
+        }
+        // List Images
+        function listImages() {
+            showLoader();
+            fetch('/cgi-bin/docker.py?cmd=docker%20images%20--format%20\"{{json%20.}}\"')
+                .then(r => r.text())
+                .then(txt => {
+                    hideLoader();
+                    const lines = txt.split('\n').filter(l => l.trim());
+                    let rows = lines.map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+                    if (!rows.length) { document.getElementById('dockerTableOutput').innerHTML = txt; return; }
+                    let html = `<table class='w-full text-sm'><thead><tr>`;
+                    Object.keys(rows[0]).forEach(k => { html += `<th class='border px-2 py-1'>${k}</th>`; });
+                    html += `<th class='border px-2 py-1'>Actions</th></tr></thead><tbody>`;
+                    rows.forEach(r => {
+                        html += `<tr>`;
+                        Object.values(r).forEach(v => html += `<td class='border px-2 py-1'>${v}</td>`);
+                        html += `<td class='border px-2 py-1'>`;
+                        html += `<button onclick=\"removeImage('${r.Repository}','${r.Tag}')\" class='bg-red-600 text-white px-2 py-1 rounded m-1'>Remove</button>`;
+                        html += `<button onclick=\"inspectItem('image','${r.Repository}:${r.Tag}')\" class='bg-gray-600 text-white px-2 py-1 rounded m-1'>Inspect</button>`;
+                        html += `</td></tr>`;
+                    });
+                    html += `</tbody></table>`;
+                    document.getElementById('dockerTableOutput').innerHTML = html;
+                });
+        }
+        // Remove Image
+        function removeImage(repo, tag) {
+            if (!confirm('Remove image ' + repo + ':' + tag + '?')) return;
+            showLoader();
+            fetch(`/cgi-bin/docker.py?cmd=docker%20rmi%20${repo}:${tag}`)
+                .then(r => r.text()).then(txt => { hideLoader(); alert(txt); listImages(); });
+        }
+        // Show Resource Usage Stats
+        function showStats() {
+            showLoader();
+            fetch('/cgi-bin/docker.py?cmd=docker%20stats%20--no-stream%20--format%20\"{{json%20.}}\"')
+                .then(r => r.text())
+                .then(txt => {
+                    hideLoader();
+                    const lines = txt.split('\n').filter(l => l.trim());
+                    let rows = lines.map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+                    if (!rows.length) { document.getElementById('dockerTableOutput').innerHTML = txt; return; }
+                    let html = `<table class='w-full text-sm'><thead><tr>`;
+                    Object.keys(rows[0]).forEach(k => { html += `<th class='border px-2 py-1'>${k}</th>`; });
+                    html += `</tr></thead><tbody>`;
+                    rows.forEach(r => {
+                        html += `<tr>`;
+                        Object.values(r).forEach(v => html += `<td class='border px-2 py-1'>${v}</td>`);
+                        html += `</tr>`;
+                    });
+                    html += `</tbody></table>`;
+                    document.getElementById('dockerTableOutput').innerHTML = html;
+                });
+        }
+        // List Networks
+        function listNetworks() {
+            showLoader();
+            fetch('/cgi-bin/docker.py?cmd=docker%20network%20ls%20--format%20\"{{json%20.}}\"')
+                .then(r => r.text())
+                .then(txt => {
+                    hideLoader();
+                    const lines = txt.split('\n').filter(l => l.trim());
+                    let rows = lines.map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+                    if (!rows.length) { document.getElementById('dockerTableOutput').innerHTML = txt; return; }
+                    let html = `<table class='w-full text-sm'><thead><tr>`;
+                    Object.keys(rows[0]).forEach(k => { html += `<th class='border px-2 py-1'>${k}</th>`; });
+                    html += `<th class='border px-2 py-1'>Actions</th></tr></thead><tbody>`;
+                    rows.forEach(r => {
+                        html += `<tr>`;
+                        Object.values(r).forEach(v => html += `<td class='border px-2 py-1'>${v}</td>`);
+                        html += `<td class='border px-2 py-1'>`;
+                        html += `<button onclick=\"removeNetwork('${r.Name}')\" class='bg-red-600 text-white px-2 py-1 rounded m-1'>Remove</button>`;
+                        html += `</td></tr>`;
+                    });
+                    html += `</tbody></table>`;
+                    document.getElementById('dockerTableOutput').innerHTML = html;
+                });
+        }
+        function removeNetwork(name) {
+            if (!confirm('Remove network ' + name + '?')) return;
+            showLoader();
+            fetch(`/cgi-bin/docker.py?cmd=docker%20network%20rm%20${name}`)
+                .then(r => r.text()).then(txt => { hideLoader(); alert(txt); listNetworks(); });
+        }
+        // List Volumes
+        function listVolumes() {
+            showLoader();
+            fetch('/cgi-bin/docker.py?cmd=docker%20volume%20ls%20--format%20\"{{json%20.}}\"')
+                .then(r => r.text())
+                .then(txt => {
+                    hideLoader();
+                    const lines = txt.split('\n').filter(l => l.trim());
+                    let rows = lines.map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+                    if (!rows.length) { document.getElementById('dockerTableOutput').innerHTML = txt; return; }
+                    let html = `<table class='w-full text-sm'><thead><tr>`;
+                    Object.keys(rows[0]).forEach(k => { html += `<th class='border px-2 py-1'>${k}</th>`; });
+                    html += `<th class='border px-2 py-1'>Actions</th></tr></thead><tbody>`;
+                    rows.forEach(r => {
+                        html += `<tr>`;
+                        Object.values(r).forEach(v => html += `<td class='border px-2 py-1'>${v}</td>`);
+                        html += `<td class='border px-2 py-1'>`;
+                        html += `<button onclick=\"removeVolume('${r.Name}')\" class='bg-red-600 text-white px-2 py-1 rounded m-1'>Remove</button>`;
+                        html += `</td></tr>`;
+                    });
+                    html += `</tbody></table>`;
+                    document.getElementById('dockerTableOutput').innerHTML = html;
+                });
+        }
+        function removeVolume(name) {
+            if (!confirm('Remove volume ' + name + '?')) return;
+            showLoader();
+            fetch(`/cgi-bin/docker.py?cmd=docker%20volume%20rm%20${name}`)
+                .then(r => r.text()).then(txt => { hideLoader(); alert(txt); listVolumes(); });
+        }
+
+        // Dockerfile Creator Logic
+        function showWriteDockerfile() {
+            document.getElementById('dockerfileEditorContainer').classList.remove('hidden');
+            // Set default content if empty
+            let txt = document.getElementById('dockerfileEditor').value;
+            if (!txt.trim()) {
+                document.getElementById('dockerfileEditor').value = 'FROM python:3.11\nRUN pip install flask\nCMD ["python3", "app.py"]';
+            }
+        }
+        function saveDockerfile() {
+            let content = document.getElementById('dockerfileEditor').value;
+            if (!content.trim()) { alert('Dockerfile cannot be empty!'); return; }
+            showLoader();
+            // Remove all \n in uploaded content (if any)
+            content = content.replace(/\\n/g, '\n');
+            // Send as a single string (no \n in textarea input)
+            const encoded = encodeURIComponent(content);
+            // Write Dockerfile to the new writable directory
+            fetch(`/cgi-bin/docker.py?cmd=echo%20-e%20'${encoded.replace(/'/g, "'\\''").replace(/%0A/g, "\\n")}'%20%7C%20tee%20/var/www/html/dockerfiles/Dockerfile`)
+                .then(r => r.text())
+                .then(txt => {
+                    hideLoader();
+                    document.getElementById('dockerfileSaveStatus').innerText = 'Saved!';
+                    setTimeout(()=>document.getElementById('dockerfileSaveStatus').innerText='', 2000);
+                    showModal(txt);
+                });
+        }
+        function uploadDockerfile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                // Replace any literal \n from uploaded files with real newlines
+                let val = ev.target.result.replace(/\\n/g, '\n');
+                document.getElementById('dockerfileEditor').value = val;
+                showWriteDockerfile();
+            };
+            reader.readAsText(file);
+        }
+        function buildDockerImage() {
+            const imageName = document.getElementById('dockerImageName').value.trim();
+            if (!imageName) { alert('Please enter an image name (e.g. myimage:latest)'); return; }
+            showLoader();
+            // Build the Docker image from the dockerfiles directory
+            fetch(`/cgi-bin/docker.py?cmd=docker%20build%20-t%20${encodeURIComponent(imageName)}%20/var/www/html/dockerfiles`)
+                .then(r => r.text())
+                .then(txt => {
+                    hideLoader();
+                    showModal(txt);
+                });
+        }
+    </script>
+</body>
+</html> 

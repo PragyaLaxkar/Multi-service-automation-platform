@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Generator AI</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #00c4cc, #007bff);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.2em;
+        }
+        .header p {
+            margin: 5px 0 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+            min-height: 30vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .input-card, .image-card {
+            margin-left: 0; /* Remove any left margin */
+        }
+        .input-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        .input-card form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        input[type="text"] {
+            width: 100%;
+            min-width: 500px;
+            max-width: 600px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1.1em;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: #00c4cc;
+        }
+        input[type="submit"] {
+            padding: 12px 30px;
+            background: #00c4cc;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        input[type="submit"]:hover {
+            background: #009ba1;
+        }
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 6px solid #e0e0e0;
+            border-top: 6px solid #00c4cc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+            margin: 30px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .image-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            display: none; /* Hidden until image loads */
+        }
+        .image-card img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .download-btn {
+            padding: 12px 30px;
+            background: #00c4cc;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .download-btn:hover {
+            background: #009ba1;
+        }
+        .error-message {
+            background: #ffe6e6;
+            color: #d32f2f;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: inline-block;
+            font-size: 1em;
+        }
+        /* New styles for history sidebar */
+        .history-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 300px;
+            height: 100vh;
+            background: white;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .history-sidebar h2 {
+            font-size: 1.5em;
+            color: #00c4cc;
+            margin: 0 0 20px;
+            text-align: center;
+        }
+        .history-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .history-item:hover {
+            background: #e0f7fa;
+        }
+        .history-item img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-right: 10px;
+        }
+        .history-item p {
+            margin: 0;
+            font-size: 0.9em;
+            color: #333;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="history-sidebar">
+        <h2>History</h2>
+        <div id="historyList"></div>
+    </div>
+    <div class="header">
+        <h1>Image Generator AI</h1>
+        <p>Create stunning images from your ideas in seconds</p>
+    </div>
+    <div class="container">
+        <div class="input-card">
+            <form id="imageForm">
+                <input type="text" id="prompt" name="prompt" placeholder="e.g., A futuristic city at sunset" required>
+                <input type="submit" value="Generate Image">
+            </form>
+        </div>
+        <div class="loader" id="loader"></div>
+        <div class="image-card" id="imageContainer"></div>
+    </div>
+
+    <script>
+        // Array to store history
+        let history = [];
+
+        document.getElementById('imageForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var prompt = document.getElementById('prompt').value;
+            var loader = document.getElementById('loader');
+            var imageContainer = document.getElementById('imageContainer');
+
+            loader.style.display = 'block';
+            imageContainer.style.display = 'none';
+            imageContainer.innerHTML = '';
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/cgi-bin/generate_image.py', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    loader.style.display = 'none';
+                    imageContainer.innerHTML = xhr.responseText;
+
+                    if (xhr.responseText.includes('<img')) {
+                        // Show image card and add download button
+                        imageContainer.style.display = 'block';
+                        var downloadBtn = document.createElement('button');
+                        downloadBtn.className = 'download-btn';
+                        downloadBtn.textContent = 'Download Image';
+                        downloadBtn.onclick = function() {
+                            var imgSrc = imageContainer.querySelector('img').src;
+                            var link = document.createElement('a');
+                            link.href = imgSrc;
+                            link.download = 'generated_image.jpg';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        };
+                        imageContainer.appendChild(downloadBtn);
+
+                        // Add to history
+                        var imgSrc = imageContainer.querySelector('img').src;
+                        history.push({ prompt: prompt, image: imgSrc });
+                        updateHistory();
+                    } else {
+                        // Style error message
+                        imageContainer.style.display = 'block';
+                        var errorDiv = imageContainer.querySelector('p');
+                        if (errorDiv) {
+                            errorDiv.className = 'error-message';
+                        }
+                    }
+                }
+            };
+            xhr.send('prompt=' + encodeURIComponent(prompt));
+        });
+
+        // Update history sidebar
+        function updateHistory() {
+            var historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            history.forEach(function(item, index) {
+                var historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.innerHTML = `
+                    <img src="${item.image}" alt="History Image">
+                    <p>${item.prompt}</p>
+                `;
+                historyItem.onclick = function() {
+                    var imageContainer = document.getElementById('imageContainer');
+                    imageContainer.innerHTML = `
+                        <img src="${item.image}" alt="Generated Image">
+                        <button class="download-btn">Download Image</button>
+                    `;
+                    imageContainer.style.display = 'block';
+                    // Reattach download button functionality
+                    imageContainer.querySelector('.download-btn').onclick = function() {
+                        var link = document.createElement('a');
+                        link.href = item.image;
+                        link.download = 'generated_image.jpg';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    };
+                };
+                historyList.appendChild(historyItem);
+            });
+        }
+    </script>
+</body>
+</html>
